@@ -18,6 +18,8 @@ yarn.lock
 # Build outputs
 dist/
 build/
+bin/
+obj/
 *.log
 
 # Environment files
