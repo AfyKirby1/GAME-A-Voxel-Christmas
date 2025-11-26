@@ -189,82 +189,233 @@ function setupCountdownTimer() {
 
         if (countdown <= 0) {
             clearInterval(countdownInterval);
-            timer.style.opacity = '0';
-            timer.style.pointerEvents = 'none';
             
-            // Fade out the UI
-            title.style.transition = 'opacity 1s ease';
-            title.style.opacity = '0';
-            title.style.pointerEvents = 'none';
+            // Completely remove timer from DOM
+            timer.style.display = 'none';
             
-            // Also fade out other UI elements
+            // Use shared hideUI function to maintain state consistency and enable double-click wake
+            hideUI();
+            
+            // Add transition for smooth fade
+            if (title) {
+                title.style.transition = 'opacity 1s ease';
+            }
+            
+            // Get all UI buttons and completely hide them
             const uiToggle = document.getElementById('ui-toggle');
             const fullscreenBtn = document.getElementById('fullscreen-btn');
             const techBtn = document.getElementById('tech-toggle-btn');
             const newsReel = document.getElementById('news-reel');
+            const quitBtn = document.getElementById('quit-btn');
             
-            if (uiToggle) {
-                uiToggle.style.transition = 'opacity 1s ease';
-                uiToggle.style.opacity = '0';
-            }
-            if (fullscreenBtn) {
-                fullscreenBtn.style.transition = 'opacity 1s ease';
-                fullscreenBtn.style.opacity = '0';
-            }
-            if (techBtn) {
-                techBtn.style.transition = 'opacity 1s ease';
-                techBtn.style.opacity = '0';
-            }
+            // Completely remove buttons from layout - no hover, no click, nothing
+            const hideButton = (btn) => {
+                if (btn) {
+                    btn.style.transition = 'opacity 0.5s ease';
+                    btn.style.opacity = '0';
+                    btn.style.pointerEvents = 'none';
+                    btn.style.cursor = 'default';
+                    btn.classList.add('ui-hidden');
+                    // After fade, completely remove from layout
+                    setTimeout(() => {
+                        btn.style.display = 'none';
+                        btn.style.visibility = 'hidden';
+                        btn.style.position = 'absolute';
+                        btn.style.left = '-9999px';
+                        btn.style.top = '-9999px';
+                        btn.style.width = '0';
+                        btn.style.height = '0';
+                        btn.style.overflow = 'hidden';
+                    }, 500);
+                }
+            };
+            
+            hideButton(uiToggle);
+            hideButton(fullscreenBtn);
+            hideButton(techBtn);
+            hideButton(quitBtn);
+            
             if (newsReel) {
                 newsReel.style.transition = 'opacity 1s ease';
                 newsReel.style.opacity = '0';
+                newsReel.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    newsReel.style.display = 'none';
+                }, 1000);
             }
         }
     }, 1000);
 }
 
+export function setupSplashScreen() {
+    const splashScreen = document.getElementById('splash-screen');
+    const splashButton = document.getElementById('splash-continue');
+    
+    if (!splashScreen) {
+        console.warn('Splash screen not found, starting app immediately');
+        import('./main.js').then(({ startApp }) => startApp());
+        return;
+    }
+    
+    let dismissed = false;
+    
+    const dismissSplash = () => {
+        if (dismissed) return;
+        dismissed = true;
+        
+        console.log('Dismissing splash screen...');
+        
+        // Hide splash screen with transition
+        splashScreen.style.transition = 'opacity 0.5s ease, visibility 0.5s ease';
+        splashScreen.style.opacity = '0';
+        splashScreen.style.visibility = 'hidden';
+        splashScreen.style.pointerEvents = 'none';
+        
+        // Remove classes
+        splashScreen.classList.remove('splash-screen-visible');
+        splashScreen.classList.add('splash-screen-hidden');
+        
+        // Show canvas now that splash is dismissed (scene was already loading in background)
+        setTimeout(() => {
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+                canvas.style.display = 'block';
+                console.log('✅ Canvas revealed - scene was already loaded!');
+            }
+        }, 100);
+        
+        // Start music when splash is dismissed
+        const bgMusic = document.getElementById('bg-music');
+        if (bgMusic) {
+            bgMusic.play().then(() => {
+                console.log('✅ Background music started from splash screen!');
+            }).catch(err => {
+                console.error('Could not start music:', err);
+            });
+        }
+        
+        // Start the countdown timer now that splash is dismissed
+        setupCountdownTimer();
+        
+        // App is already started and world generation is complete!
+        // No need to call startApp() again
+    };
+    
+    // Dismiss on button click
+    if (splashButton) {
+        splashButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dismissSplash();
+        });
+    }
+    
+    // Dismiss on any click on the splash screen background
+    splashScreen.addEventListener('click', (e) => {
+        if (e.target === splashScreen || e.target.closest('.splash-content') === null) {
+            dismissSplash();
+        }
+    });
+}
+
+// Shared UI state and functions - accessible to countdown timer
+let uiVisible = true;
+
+// Global UI control functions - can be called from anywhere
+function hideUI() {
+    uiVisible = false;
+    const title = document.getElementById('title-screen');
+    const uiBtn = document.getElementById('ui-toggle');
+    const menuContainer = document.querySelector('.menu-container');
+    const menuButtons = document.querySelectorAll('.menu-btn');
+    
+    if (title) {
+        title.style.opacity = '0';
+        title.style.pointerEvents = 'none';
+        title.classList.add('ui-hidden');
+    }
+    if (uiBtn) uiBtn.innerText = 'Show UI';
+    
+    // Disable menu buttons - completely remove interactivity
+    if (menuContainer) {
+        menuContainer.style.pointerEvents = 'none';
+        menuContainer.classList.add('ui-hidden');
+    }
+    menuButtons.forEach(btn => {
+        btn.style.pointerEvents = 'none';
+        btn.style.cursor = 'default';
+        btn.classList.add('ui-hidden');
+    });
+}
+
+function showUI() {
+    uiVisible = true;
+    const title = document.getElementById('title-screen');
+    const uiBtn = document.getElementById('ui-toggle');
+    const menuContainer = document.querySelector('.menu-container');
+    const menuButtons = document.querySelectorAll('.menu-btn');
+    const newsReel = document.getElementById('news-reel');
+    const audioWarning = document.querySelector('.audio-warning');
+    
+    if (title) {
+        title.style.opacity = '1';
+        title.style.pointerEvents = 'auto';
+        title.classList.remove('ui-hidden');
+        // Reset transition to CSS default (remove inline override from countdown timer)
+        title.style.transition = '';
+    }
+    if (uiBtn) uiBtn.innerText = 'Hide UI';
+    
+    // Ensure audio warning is visible and properly positioned
+    if (audioWarning) {
+        audioWarning.style.opacity = '';
+        audioWarning.style.pointerEvents = '';
+        audioWarning.classList.remove('ui-hidden');
+    }
+    
+    // Enable menu buttons
+    if (menuContainer) {
+        menuContainer.style.pointerEvents = 'auto';
+        menuContainer.classList.remove('ui-hidden');
+    }
+    menuButtons.forEach(btn => {
+        btn.classList.remove('ui-hidden');
+        btn.style.pointerEvents = 'auto';
+        // Only restore cursor for play button, others stay not-allowed
+        if (btn.id === 'play-btn') {
+            btn.style.cursor = 'pointer';
+        }
+    });
+    
+    // Restore news reel that was hidden by countdown timer
+    if (newsReel) {
+        newsReel.style.display = '';
+        newsReel.style.opacity = '1';
+        newsReel.style.pointerEvents = 'auto';
+        newsReel.classList.remove('ui-hidden');
+    }
+    
+    // Restore UI buttons that were hidden by countdown timer
+    const allUIButtons = document.querySelectorAll('.ui-btn, .tech-toggle-btn');
+    allUIButtons.forEach(btn => {
+        if (btn && btn.classList.contains('ui-hidden')) {
+            btn.classList.remove('ui-hidden');
+            btn.style.display = '';
+            btn.style.visibility = '';
+            btn.style.position = '';
+            btn.style.left = '';
+            btn.style.top = '';
+            btn.style.width = '';
+            btn.style.height = '';
+            btn.style.overflow = '';
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+        }
+    });
+}
+
 export function setupUI() {
     const uiBtn = document.getElementById('ui-toggle');
     const fsBtn = document.getElementById('fullscreen-btn');
-    const title = document.getElementById('title-screen');
-    const menuContainer = document.querySelector('.menu-container');
-    const menuButtons = document.querySelectorAll('.menu-btn');
-    let uiVisible = true;
-
-    function hideUI() {
-        uiVisible = false;
-        title.style.opacity = '0';
-        title.style.pointerEvents = 'none';
-        uiBtn.innerText = 'Show UI';
-        
-        // Disable menu buttons
-        if (menuContainer) {
-            menuContainer.style.pointerEvents = 'none';
-        }
-        menuButtons.forEach(btn => {
-            btn.style.pointerEvents = 'none';
-            btn.style.cursor = 'not-allowed';
-        });
-    }
-
-    function showUI() {
-        uiVisible = true;
-        title.style.opacity = '1';
-        title.style.pointerEvents = 'auto';
-        uiBtn.innerText = 'Hide UI';
-        
-        // Enable menu buttons
-        if (menuContainer) {
-            menuContainer.style.pointerEvents = 'auto';
-        }
-        menuButtons.forEach(btn => {
-            btn.style.pointerEvents = 'auto';
-            // Only restore cursor for play button, others stay not-allowed
-            if (btn.id === 'play-btn') {
-                btn.style.cursor = 'pointer';
-            }
-        });
-    }
 
     // Toggle UI Visibility
     uiBtn.addEventListener('click', () => {
@@ -275,8 +426,7 @@ export function setupUI() {
         }
     });
 
-    // Double-click to restore UI when hidden
-    let lastClickTime = 0;
+    // Double-click to restore UI when hidden (works after auto-hide too)
     document.addEventListener('dblclick', (e) => {
         // Only restore if UI is hidden and not clicking on UI elements
         if (!uiVisible && !e.target.closest('#title-screen') && !e.target.closest('.ui-btn') && !e.target.closest('.tech-toggle-btn')) {
@@ -311,15 +461,14 @@ export function setupUI() {
         });
     }
 
-    // Setup tech info panel
-    setupTechInfoPanel();
+    // Setup splash screen FIRST (before everything else)
+    setupSplashScreen();
     
-    // Setup world generation panel
+    // These will be set up after splash is dismissed (in startApp)
+    // But we can set up the event handlers now
+    setupTechInfoPanel();
     setupWorldGenPanel();
-
-    // Setup news reel snowflakes
     setupNewsReelSnowflakes();
-
-    // Setup countdown timer
-    setupCountdownTimer();
+    // Countdown timer will be started when splash screen is dismissed
+    // setupCountdownTimer(); // Moved to splash dismissal
 }

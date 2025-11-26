@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
@@ -20,6 +21,7 @@ namespace VoxelChristmas
     public class MainForm : Form
     {
         private WebView2 webView;
+        private Label loadingLabel;
 
         public MainForm()
         {
@@ -27,10 +29,33 @@ namespace VoxelChristmas
             WindowState = FormWindowState.Maximized;
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
+            
+            // Set background color to match splash screen (prevents black screen)
+            BackColor = Color.FromArgb(5, 5, 16);
 
-            // Create and add WebView2 control
-            webView = new WebView2 { Dock = DockStyle.Fill };
+            // Create loading label that shows immediately
+            loadingLabel = new Label
+            {
+                Text = "❄️ Loading...",
+                Font = new Font("Segoe UI", 24, FontStyle.Bold),
+                ForeColor = Color.FromArgb(200, 220, 255),
+                BackColor = Color.Transparent,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0)
+            };
+            Controls.Add(loadingLabel);
+            loadingLabel.BringToFront();
+
+            // Create and add WebView2 control (behind loading label)
+            webView = new WebView2 
+            { 
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(5, 5, 16) // Match background
+            };
             Controls.Add(webView);
+            webView.SendToBack(); // Keep loading label on top
 
             // Initialize WebView2
             InitializeWebView();
@@ -53,6 +78,16 @@ namespace VoxelChristmas
 
                 // Initialize WebView2
                 await webView.EnsureCoreWebView2Async();
+
+                // Set default background color to match splash screen
+                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                webView.DefaultBackgroundColor = Color.FromArgb(5, 5, 16);
+                
+                // Also set the WebView2 background explicitly
+                webView.BackColor = Color.FromArgb(5, 5, 16);
+                
+                // Make WebView2 transparent until content loads (prevents black flash)
+                webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
 
                 // Set up virtual host name mapping to serve files via HTTP (fixes CORS for ES modules)
                 // This allows ES modules to load without CORS errors
@@ -77,6 +112,25 @@ namespace VoxelChristmas
 
                 // Navigate using the virtual host name (HTTP instead of file://)
                 webView.CoreWebView2.Navigate("http://app.local/index.html");
+
+                // Hide loading label once DOM content is loaded
+                webView.CoreWebView2.DOMContentLoaded += (sender, e) =>
+                {
+                    if (loadingLabel != null)
+                    {
+                        if (loadingLabel.InvokeRequired)
+                        {
+                            loadingLabel.Invoke((MethodInvoker)delegate
+                            {
+                                loadingLabel.Visible = false;
+                            });
+                        }
+                        else
+                        {
+                            loadingLabel.Visible = false;
+                        }
+                    }
+                };
 
                 // Optional: Enable DevTools (comment out for production)
                 // webView.CoreWebView2.Settings.AreDevToolsEnabled = true;

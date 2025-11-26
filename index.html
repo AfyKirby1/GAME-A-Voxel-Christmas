@@ -5,6 +5,36 @@
     <meta charset="UTF-8">
     <title>A Voxel Christmas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <style>
+        /* Instant splash screen - shows before CSS loads */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(5, 5, 16, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            visibility: visible;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050510;
+            background: linear-gradient(135deg, rgba(5, 5, 16, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+        }
+        canvas {
+            /* Canvas will be hidden by JavaScript after scene setup, but initially visible for rendering */
+        }
+        #splash-content {
+            opacity: 0;
+            animation: fadeInUp 0.8s ease 0.2s forwards;
+        }
+    </style>
     <link rel="stylesheet" href="css/style.css">
     <script type="importmap">
         {
@@ -18,6 +48,24 @@
 
 <body>
 
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen-visible">
+        <div class="splash-content">
+            <div class="splash-header">
+                <h2>❄️ A Voxel Christmas ❄️</h2>
+                <p class="splash-subtitle">v0.0.1 ALPHA</p>
+            </div>
+            <div class="splash-message">
+                <p class="splash-greeting">Hello, and welcome!</p>
+                <p>This is a labor of love - a procedural winter wonderland built with passion and pixels.</p>
+                <p>You're experiencing an <strong>alpha build</strong>, so things might be a bit rough around the edges, but I hope you enjoy the magic I've tried to create.</p>
+                <p class="splash-signature">With warmth and winter wishes,<br><strong>Ryan</strong> - The Dev ❄️</p>
+            </div>
+            <button id="splash-continue" class="splash-button">Continue to Experience</button>
+            <p class="splash-note">Click anywhere to begin</p>
+        </div>
+    </div>
+
     <div id="title-screen">
         <h1>A VOXEL CHRISTMAS</h1>
         <p>Procedural Winter Wonderland</p>
@@ -27,6 +75,7 @@
             <button class="menu-btn">Settings</button>
             <button class="menu-btn">About</button>
         </div>
+        <p class="audio-warning">🎵 Background music enabled - adjust volume as needed</p>
 
         <!-- World Generation Panel -->
         <div id="world-gen-panel" class="world-gen-panel-hidden">
