@@ -25,6 +25,12 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - **Scrolling Text**: Continuous horizontal scroll of latest updates
 - **Play Button**: Glowy snowy appearance with animated snowflakes and pulsing glow.
 - **Quit Button**: Red-tinted quit button (✕ Quit) in bottom-right corner that closes the application. Uses WebView2 message communication between JavaScript and C# wrapper.
+- **UI Auto-Hide System**:
+  - **Countdown Timer**: 5-second countdown after splash screen automatically hides UI for immersive viewing
+  - **Manual Toggle**: "Hide UI" / "Show UI" button for manual control
+  - **Double-Click Wake**: Double-click anywhere on canvas to restore UI after auto-hide
+  - **Interaction Blocking**: When hidden, all menu buttons are disabled with no hover effects or click interactions
+  - **Complete Restoration**: UI wake properly restores all elements including news reel and audio warning positioning
 
 ## Distribution
 

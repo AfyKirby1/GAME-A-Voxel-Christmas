@@ -22,12 +22,24 @@
     - Maximum 7 active snowflakes
     - Continuous spawning at 0.5-1.5 second intervals
 - **Enhanced Play Button**: Glowy snowy appearance with animated snowflakes and pulsing glow effect.
+- **UI Auto-Hide System**: 
+  - **Countdown Timer**: 5-second countdown after splash screen dismissal that automatically hides the UI for immersive viewing
+  - **Manual Hide Toggle**: "Hide UI" button to manually hide/show the UI
+  - **Double-Click to Wake**: Double-click anywhere on the canvas to restore the UI after auto-hide
+  - **Interaction Disabling**: When UI is hidden, all buttons (Play, Settings, About) are disabled with no hover effects or click interactions
+  - **Complete State Restoration**: UI restoration properly restores all elements including news reel, audio warning, and button positions
 
 ### Changed
 - News reel styling updated to pill shape with RGB LED border animation.
 - Play button made clickable with enhanced visual feedback.
 - RGB animations slowed down for smoother visual effect (outer: 3s→6s, border: 12s→20s, inner: 10s→16s).
 - News reel snowflakes system converted from CSS to JavaScript for dynamic random spawning.
+- UI state management refactored for unified hide/show system used by both manual toggle and auto-hide.
+
+### Fixed
+- **UI Interaction Bug**: Fixed issue where menu buttons (Play, Settings, About) remained clickable and showed hover effects when UI was hidden. Buttons now properly disabled with `pointer-events: none` and CSS `ui-hidden` class.
+- **News Reel Missing**: Fixed bug where news reel would disappear after double-clicking to wake UI. News reel now properly restored with display, opacity, and pointer-events.
+- **Audio Warning Position**: Fixed issue where audio warning box would move incorrectly after UI restoration. Audio warning now maintains proper positioning during hide/show cycles.
 
 ## [0.0.1 ALPHA] - 2025-01-27
 ### Added

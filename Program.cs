@@ -22,6 +22,7 @@ namespace VoxelChristmas
     {
         private WebView2 webView;
         private Label loadingLabel;
+        private bool isFullscreen = true; // Start in fullscreen mode
 
         public MainForm()
         {
@@ -100,14 +101,19 @@ namespace VoxelChristmas
                 webView.CoreWebView2.WebMessageReceived += (sender, e) =>
                 {
                     string message = e.TryGetWebMessageAsString();
-                    if (message == "quit")
+                    this.Invoke((MethodInvoker)delegate
                     {
-                        // Close the application
-                        this.Invoke((MethodInvoker)delegate
+                        if (message == "quit")
                         {
+                            // Close the application
                             this.Close();
-                        });
-                    }
+                        }
+                        else if (message == "toggle-fullscreen")
+                        {
+                            // Toggle between fullscreen and windowed mode
+                            ToggleFullscreen();
+                        }
+                    });
                 };
 
                 // Navigate using the virtual host name (HTTP instead of file://)
@@ -139,6 +145,28 @@ namespace VoxelChristmas
             {
                 MessageBox.Show($"Error initializing WebView2: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
+            }
+        }
+
+        private void ToggleFullscreen()
+        {
+            if (isFullscreen)
+            {
+                // Switch to windowed mode
+                FormBorderStyle = FormBorderStyle.Sizable;
+                WindowState = FormWindowState.Normal;
+                
+                // Set a reasonable window size (e.g., 1280x720)
+                this.Size = new Size(1280, 720);
+                StartPosition = FormStartPosition.CenterScreen;
+                isFullscreen = false;
+            }
+            else
+            {
+                // Switch to fullscreen mode
+                FormBorderStyle = FormBorderStyle.None;
+                WindowState = FormWindowState.Maximized;
+                isFullscreen = true;
             }
         }
 

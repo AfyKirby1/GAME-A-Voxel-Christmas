@@ -436,13 +436,20 @@ export function setupUI() {
 
     // Toggle Fullscreen
     fsBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.warn(`Error enabling fullscreen: ${err.message}`);
-            });
+        // Check if we're in a WebView2 desktop application
+        if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+            // Send message to C# to toggle fullscreen/windowed mode
+            window.chrome.webview.postMessage('toggle-fullscreen');
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
+            // Fallback to browser fullscreen API for web version
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Error enabling fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
         }
     });
