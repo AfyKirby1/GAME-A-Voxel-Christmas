@@ -12,7 +12,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo Build successful! Executable is in: bin\Release\net8.0-windows\
+echo Build successful! Executable is in: build\bin\Release\net8.0-windows\
 echo.
 pause
 
