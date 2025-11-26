@@ -27,15 +27,46 @@ function init() {
     // 4. UI
     setupUI();
 
-    // 5. Hide Loading
+    // 5. Start Background Music
+    setupBackgroundMusic();
+
+    // 6. Hide Loading
     const loading = document.getElementById('loading');
     loading.style.opacity = '0';
     setTimeout(() => {
         loading.style.display = 'none';
     }, 500);
 
-    // 6. Start Loop
+    // 7. Start Loop
     animate();
+}
+
+function setupBackgroundMusic() {
+    const bgMusic = document.getElementById('bg-music');
+    if (!bgMusic) return;
+
+    // Set volume (0.0 to 1.0)
+    bgMusic.volume = 0.5;
+
+    // Try to play (may require user interaction due to browser autoplay policies)
+    const playPromise = bgMusic.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            // Autoplay was prevented - wait for user interaction
+            console.log('Autoplay prevented, waiting for user interaction');
+            
+            // Start music on first user interaction
+            const startMusic = () => {
+                bgMusic.play().catch(err => console.log('Could not start music:', err));
+                document.removeEventListener('click', startMusic);
+                document.removeEventListener('keydown', startMusic);
+            };
+            
+            document.addEventListener('click', startMusic, { once: true });
+            document.addEventListener('keydown', startMusic, { once: true });
+        });
+    }
 }
 
 function animate() {

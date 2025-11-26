@@ -24,6 +24,7 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - **Dynamic Snowflakes**: JavaScript-generated snowflakes spawning at random positions, falling with rotation (6-8s duration, max 7 active)
   - **Scrolling Text**: Continuous horizontal scroll of latest updates
 - **Play Button**: Glowy snowy appearance with animated snowflakes and pulsing glow.
+- **Quit Button**: Red-tinted quit button (✕ Quit) in bottom-right corner that closes the application. Uses WebView2 message communication between JavaScript and C# wrapper.
 
 ## Distribution
 
@@ -38,5 +39,5 @@ The project can be packaged as a lightweight Windows executable using WebView2:
 See [PACKAGING.md](../PACKAGING.md) for detailed instructions.
 
 ## Status
-- **Current Version**: 1.0.0
+- **Current Version**: 0.0.1 ALPHA
 - **Last Update**: WebView2 Windows packaging added. UI enhancements and RGB LED animations.

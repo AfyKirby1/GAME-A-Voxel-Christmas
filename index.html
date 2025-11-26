@@ -67,7 +67,7 @@
             <div class="rgb-edge"></div>
             <div class="news-content">
                 <span>❄️ LATEST UPDATE: Visuals improved • Snow intensity reduced • House windows updated • Welcome to
-                    Voxel Christmas v1.0 ❄️</span>
+                    Voxel Christmas v0.0.1 ALPHA ❄️</span>
             </div>
         </div>
     </div>
@@ -76,6 +76,7 @@
 
     <button id="ui-toggle" class="ui-btn">Hide UI</button>
     <button id="fullscreen-btn" class="ui-btn">⛶ Fullscreen</button>
+    <button id="quit-btn" class="ui-btn">✕ Quit</button>
 
     <button id="tech-toggle-btn" class="tech-toggle-btn">⚙️ Tech</button>
     <div id="tech-info-panel" class="tech-panel-hidden">
@@ -124,6 +125,39 @@
     </div>
 
     <div id="loading">Generating World...</div>
+
+    <!-- Background Music -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="assets/audio/Frozen Whispers.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Early music initialization script -->
+    <script>
+        // Try to start music as early as possible
+        (function() {
+            const bgMusic = document.getElementById('bg-music');
+            if (!bgMusic) return;
+            
+            bgMusic.volume = 0.5;
+            
+            // Try immediate play
+            bgMusic.play().catch(() => {
+                // If autoplay fails, listen for ANY interaction
+                const startMusic = () => {
+                    bgMusic.play().catch(() => {});
+                    document.removeEventListener('click', startMusic);
+                    document.removeEventListener('mousedown', startMusic);
+                    document.removeEventListener('touchstart', startMusic);
+                    document.removeEventListener('keydown', startMusic);
+                    document.removeEventListener('mousemove', startMusic);
+                };
+                
+                ['click', 'mousedown', 'touchstart', 'keydown', 'mousemove'].forEach(event => {
+                    document.addEventListener(event, startMusic, { once: true, passive: true });
+                });
+            });
+        })();
+    </script>
 
     <script type="module" src="js/main.js"></script>
 </body>

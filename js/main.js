@@ -27,15 +27,68 @@ function init() {
     // 4. UI
     setupUI();
 
-    // 5. Hide Loading
+    // 5. Start Background Music
+    setupBackgroundMusic();
+
+    // 6. Hide Loading
     const loading = document.getElementById('loading');
     loading.style.opacity = '0';
     setTimeout(() => {
         loading.style.display = 'none';
     }, 500);
 
-    // 6. Start Loop
+    // 7. Start Loop
     animate();
+}
+
+function setupBackgroundMusic() {
+    const bgMusic = document.getElementById('bg-music');
+    if (!bgMusic) return;
+
+    // Set volume (0.0 to 1.0)
+    bgMusic.volume = 0.5;
+
+    let musicStarted = false;
+
+    const startMusic = () => {
+        if (musicStarted) return;
+        musicStarted = true;
+        
+        bgMusic.play().then(() => {
+            console.log('Background music started');
+        }).catch(err => {
+            console.log('Could not start music:', err);
+            musicStarted = false; // Retry on next interaction
+        });
+    };
+
+    // Try to play immediately
+    const playPromise = bgMusic.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            musicStarted = true;
+            console.log('Background music started automatically');
+        }).catch(error => {
+            // Autoplay was prevented - wait for ANY user interaction
+            console.log('Autoplay prevented, waiting for user interaction');
+            
+            // Listen to multiple events to catch any user interaction
+            const events = ['click', 'keydown', 'mousedown', 'touchstart', 'pointerdown', 'mousemove'];
+            
+            const startOnInteraction = () => {
+                startMusic();
+                // Remove all listeners after first successful start
+                events.forEach(event => {
+                    document.removeEventListener(event, startOnInteraction);
+                });
+            };
+            
+            events.forEach(event => {
+                document.addEventListener(event, startOnInteraction, { once: true, passive: true });
+            });
+        });
+    }
 }
 
 function animate() {

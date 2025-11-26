@@ -8,6 +8,7 @@
   - Fullscreen application wrapper
   - Packaging scripts in `portable/` folder
   - No installation required - just extract and run
+  - **Quit Button**: In-game quit button that closes the application via WebView2 message communication
 - **Tech Info Panel**: Toggleable technology display in top right showing WebGPU/WebGL, Three.js, Post-Processing, Instanced Rendering, Particle Systems, and OrbitControls.
 - **World Generation Panel**: Interactive panel accessible via Play button showing world generation stats and progress.
 - **RGB LED News Reel**: Pill-shaped news reel with animated RGB LED border that continuously flows around the edges.
@@ -28,7 +29,7 @@
 - RGB animations slowed down for smoother visual effect (outer: 3s→6s, border: 12s→20s, inner: 10s→16s).
 - News reel snowflakes system converted from CSS to JavaScript for dynamic random spawning.
 
-## [1.0.0] - 2025-11-25
+## [0.0.1 ALPHA] - 2025-01-27
 ### Added
 - Modular project structure (`js/`, `css/`, `DOCS/`).
 - `config.js` for centralized settings.

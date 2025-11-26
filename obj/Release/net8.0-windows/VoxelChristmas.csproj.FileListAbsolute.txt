@@ -33,3 +33,4 @@ C:\Users\motor\Desktop\A_VOXEL_CHRISTMAS\obj\Release\net8.0-windows\refint\Voxel
 C:\Users\motor\Desktop\A_VOXEL_CHRISTMAS\obj\Release\net8.0-windows\VoxelChristmas.pdb
 C:\Users\motor\Desktop\A_VOXEL_CHRISTMAS\obj\Release\net8.0-windows\VoxelChristmas.genruntimeconfig.cache
 C:\Users\motor\Desktop\A_VOXEL_CHRISTMAS\obj\Release\net8.0-windows\ref\VoxelChristmas.dll
+C:\Users\motor\Desktop\A_VOXEL_CHRISTMAS\bin\Release\net8.0-windows\assets\audio\Frozen Whispers.mp3

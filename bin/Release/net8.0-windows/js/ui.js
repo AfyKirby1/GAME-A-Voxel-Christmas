@@ -297,6 +297,20 @@ export function setupUI() {
         }
     });
 
+    // Quit Button
+    const quitBtn = document.getElementById('quit-btn');
+    if (quitBtn) {
+        quitBtn.addEventListener('click', () => {
+            // Send message to C# to close the application
+            if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+                window.chrome.webview.postMessage('quit');
+            } else {
+                // Fallback: try to close the window
+                window.close();
+            }
+        });
+    }
+
     // Setup tech info panel
     setupTechInfoPanel();
     

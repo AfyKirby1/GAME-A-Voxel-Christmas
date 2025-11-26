@@ -40,8 +40,9 @@ namespace VoxelChristmas
         {
             try
             {
-                // Get the path to index.html
-                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "index.html");
+                // Get the base directory
+                string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string htmlPath = Path.Combine(baseDirectory, "index.html");
                 
                 if (!File.Exists(htmlPath))
                 {
@@ -50,14 +51,35 @@ namespace VoxelChristmas
                     return;
                 }
 
-                // Convert to file:// URI
-                string htmlUri = new Uri(htmlPath).ToString();
-
                 // Initialize WebView2
                 await webView.EnsureCoreWebView2Async();
 
-                // Navigate to the HTML file
-                webView.CoreWebView2.Navigate(htmlUri);
+                // Enable autoplay for media (helps with background music)
+                webView.CoreWebView2.Settings.IsAutoplayEnabled = true;
+
+                // Set up virtual host name mapping to serve files via HTTP (fixes CORS for ES modules)
+                // This allows ES modules to load without CORS errors
+                webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    "app.local",
+                    baseDirectory,
+                    CoreWebView2HostResourceAccessKind.Allow);
+
+                // Set up message handler for JavaScript to C# communication (before navigation)
+                webView.CoreWebView2.WebMessageReceived += (sender, e) =>
+                {
+                    string message = e.TryGetWebMessageAsString();
+                    if (message == "quit")
+                    {
+                        // Close the application
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            this.Close();
+                        });
+                    }
+                };
+
+                // Navigate using the virtual host name (HTTP instead of file://)
+                webView.CoreWebView2.Navigate("http://app.local/index.html");
 
                 // Optional: Enable DevTools (comment out for production)
                 // webView.CoreWebView2.Settings.AreDevToolsEnabled = true;

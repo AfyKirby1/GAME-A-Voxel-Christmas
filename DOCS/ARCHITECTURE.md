@@ -7,6 +7,7 @@ The application can be packaged as a Windows executable using WebView2:
 - **Runtime**: WebView2 (lightweight, ~1-5MB package)
 - **Packaging**: Scripts in `portable/` folder create distributable packages
 - **Output**: Fullscreen application that loads `index.html` in WebView2
+- **Communication**: JavaScript-to-C# message passing via `window.chrome.webview.postMessage()` for application control (e.g., quit button)
 
 ## Core Components
 
@@ -35,6 +36,7 @@ The application can be packaged as a Windows executable using WebView2:
   - **News Reel Snowflakes**: Dynamic JavaScript system that spawns snowflakes at random positions with falling animations.
   - **UI Toggle Observer**: Listens to `#ui-toggle` button clicks to show/hide title screen.
   - **Fullscreen Observer**: Listens to `#fullscreen-btn` clicks to toggle fullscreen mode.
+  - **Quit Button Observer**: Listens to `#quit-btn` clicks and sends "quit" message to C# wrapper via `window.chrome.webview.postMessage()` to close the application.
   - **Tech Panel Observer**: Listens to `#tech-toggle-btn` clicks to toggle tech info panel visibility.
   - **World Gen Panel Observer**: Listens to `#play-btn` clicks to show world generation panel.
   - **Close Panel Observer**: Listens to `#close-world-gen` clicks to hide world generation panel.
@@ -71,7 +73,15 @@ The application can be packaged as a Windows executable using WebView2:
      - Handles errors gracefully
    - **Connection**: Browser Fullscreen API integration
 
-3. **Tech Panel Toggle** (`js/ui.js:16-26`)
+3. **Quit Button** (`js/ui.js:298-308`)
+   - **Element**: `#quit-btn`
+   - **Event**: `click`
+   - **Actions**:
+     - Sends "quit" message to C# wrapper via `window.chrome.webview.postMessage('quit')`
+     - Falls back to `window.close()` if WebView2 API not available
+   - **Connection**: WebView2 message communication to C# (`Program.cs:68-79`), which closes the application form
+
+4. **Tech Panel Toggle** (`js/ui.js:16-26`)
    - **Element**: `#tech-toggle-btn`
    - **Event**: `click`
    - **Actions**:
@@ -79,7 +89,7 @@ The application can be packaged as a Windows executable using WebView2:
      - Adds/removes `tech-panel-visible` and `tech-panel-hidden` classes
    - **Connection**: CSS class-based visibility control
 
-4. **Play Button** (`js/ui.js:58-62`)
+5. **Play Button** (`js/ui.js:58-62`)
    - **Element**: `#play-btn`
    - **Event**: `click`
    - **Actions**:
@@ -88,7 +98,7 @@ The application can be packaged as a Windows executable using WebView2:
      - Adds `world-gen-panel-visible` class
    - **Connection**: Triggers world generation UI flow
 
-5. **Close World Gen Panel** (`js/ui.js:66-71`)
+6. **Close World Gen Panel** (`js/ui.js:66-71`)
    - **Element**: `#close-world-gen`
    - **Event**: `click`
    - **Actions**:
@@ -97,7 +107,7 @@ The application can be packaged as a Windows executable using WebView2:
      - Adds `world-gen-panel-hidden` class
    - **Connection**: Closes world generation UI flow
 
-6. **Generate World Button** (`js/ui.js:75-111`)
+7. **Generate World Button** (`js/ui.js:75-111`)
    - **Element**: `#generate-world-btn`
    - **Event**: `click`
    - **Actions**:
