@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>A Voxel Christmas</title>
+    <!-- Viewport meta tag is crucial for mobile scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <!-- Top Left Indicator -->
+    <div id="webgpu-status">
+        <div id="gpu-dot"></div>
+        <span id="gpu-label">WebGPU: Inactive</span>
+    </div>
+
+    <!-- Center Title -->
+    <div id="title-screen">
+        <h1>A VOXEL CHRISTMAS</h1>
+        <p>Procedural Winter Wonderland</p>
+
+        <div class="menu-container">
+            <button class="menu-btn">Play</button>
+            <button class="menu-btn">Settings</button>
+            <button class="menu-btn">About</button>
+        </div>
+
+        <!-- News Reel -->
+        <div id="news-reel">
+            <div class="rgb-edge"></div>
+            <div class="news-content">
+                <span>❄️ LATEST UPDATE: Visuals improved • Snow intensity reduced • House windows updated • Welcome to
+                    Voxel Christmas v1.0 ❄️</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <button id="ui-toggle" class="ui-btn">Hide UI</button>
+    <button id="fullscreen-btn" class="ui-btn">⛶ Fullscreen</button>
+
+    <!-- Loading -->
+    <div id="loading">Generating World...</div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
