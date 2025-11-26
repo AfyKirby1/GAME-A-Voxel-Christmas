@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VoxelChristmas")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.0.1.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.0.1-alpha+89f852826ab6fa029b52613e755b9cf1c68426a5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.0.1-alpha+b2eeb0673b7bfcfaf8e9a99cec5713f5cdf8a980")]
 [assembly: System.Reflection.AssemblyProductAttribute("VoxelChristmas")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VoxelChristmas")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.0.1.0")]

@@ -43,52 +43,111 @@ function init() {
 
 function setupBackgroundMusic() {
     const bgMusic = document.getElementById('bg-music');
-    if (!bgMusic) return;
+    if (!bgMusic) {
+        console.warn('Background music element not found');
+        return;
+    }
 
+    console.log('Setting up background music...');
+    
     // Set volume (0.0 to 1.0)
     bgMusic.volume = 0.5;
 
     let musicStarted = false;
 
+    // Function to start music - must be called directly from user interaction
     const startMusic = () => {
-        if (musicStarted) return;
-        musicStarted = true;
+        if (musicStarted) {
+            console.log('Music already started, skipping');
+            return;
+        }
         
-        bgMusic.play().then(() => {
-            console.log('Background music started');
-        }).catch(err => {
-            console.log('Could not start music:', err);
-            musicStarted = false; // Retry on next interaction
-        });
+        console.log('Attempting to start music...');
+        const playPromise = bgMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                musicStarted = true;
+                console.log('✅ Background music started successfully!');
+            }).catch(err => {
+                console.error('❌ Could not start music:', err);
+                musicStarted = false; // Allow retry
+            });
+        } else {
+            // Older browsers
+            try {
+                bgMusic.play();
+                musicStarted = true;
+                console.log('✅ Background music started (fallback method)');
+            } catch (err) {
+                console.error('❌ Could not start music (fallback):', err);
+            }
+        }
     };
 
-    // Try to play immediately
-    const playPromise = bgMusic.play();
-    
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            musicStarted = true;
-            console.log('Background music started automatically');
-        }).catch(error => {
-            // Autoplay was prevented - wait for ANY user interaction
-            console.log('Autoplay prevented, waiting for user interaction');
-            
-            // Listen to multiple events to catch any user interaction
-            const events = ['click', 'keydown', 'mousedown', 'touchstart', 'pointerdown', 'mousemove'];
-            
-            const startOnInteraction = () => {
+    // Wait for audio to be ready, then try autoplay
+    const tryAutoplay = () => {
+        if (bgMusic.readyState >= 2) {
+            // Audio is already loaded
+            console.log('Audio ready, attempting autoplay...');
+            startMusic();
+        } else {
+            // Wait for audio to load
+            console.log('Waiting for audio to load...');
+            bgMusic.addEventListener('canplaythrough', () => {
+                console.log('Audio loaded, attempting autoplay...');
                 startMusic();
-                // Remove all listeners after first successful start
-                events.forEach(event => {
-                    document.removeEventListener(event, startOnInteraction);
+            }, { once: true });
+        }
+    };
+
+    tryAutoplay();
+
+    // Set up user interaction handlers - play() must be called directly in the event handler
+    const events = ['click', 'keydown', 'mousedown', 'touchstart', 'pointerdown', 'mousemove'];
+    
+    const startOnInteraction = (event) => {
+        if (musicStarted) return;
+        
+        console.log('User interaction detected:', event.type, '- starting music directly...');
+        
+        // Call play() directly in the event handler context
+        const playPromise = bgMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                musicStarted = true;
+                console.log('✅ Background music started from user interaction!');
+                // Remove all listeners after successful start
+                events.forEach(eventType => {
+                    document.removeEventListener(eventType, startOnInteraction);
                 });
-            };
-            
-            events.forEach(event => {
-                document.addEventListener(event, startOnInteraction, { once: true, passive: true });
+            }).catch(err => {
+                console.error('❌ Could not start music from interaction:', err);
             });
-        });
-    }
+        } else {
+            try {
+                bgMusic.play();
+                musicStarted = true;
+                console.log('✅ Background music started (fallback from interaction)');
+                events.forEach(eventType => {
+                    document.removeEventListener(eventType, startOnInteraction);
+                });
+            } catch (err) {
+                console.error('❌ Could not start music (fallback from interaction):', err);
+            }
+        }
+    };
+    
+    events.forEach(eventType => {
+        document.addEventListener(eventType, startOnInteraction, { once: false, passive: true });
+    });
+
+    // Log audio errors
+    bgMusic.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+        console.error('Audio error details:', bgMusic.error);
+    });
 }
 
 function animate() {

@@ -131,34 +131,6 @@
         <source src="assets/audio/Frozen Whispers.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- Early music initialization script -->
-    <script>
-        // Try to start music as early as possible
-        (function() {
-            const bgMusic = document.getElementById('bg-music');
-            if (!bgMusic) return;
-            
-            bgMusic.volume = 0.5;
-            
-            // Try immediate play
-            bgMusic.play().catch(() => {
-                // If autoplay fails, listen for ANY interaction
-                const startMusic = () => {
-                    bgMusic.play().catch(() => {});
-                    document.removeEventListener('click', startMusic);
-                    document.removeEventListener('mousedown', startMusic);
-                    document.removeEventListener('touchstart', startMusic);
-                    document.removeEventListener('keydown', startMusic);
-                    document.removeEventListener('mousemove', startMusic);
-                };
-                
-                ['click', 'mousedown', 'touchstart', 'keydown', 'mousemove'].forEach(event => {
-                    document.addEventListener(event, startMusic, { once: true, passive: true });
-                });
-            });
-        })();
-    </script>
-
     <script type="module" src="js/main.js"></script>
 </body>
 

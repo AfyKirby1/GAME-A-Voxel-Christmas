@@ -54,9 +54,6 @@ namespace VoxelChristmas
                 // Initialize WebView2
                 await webView.EnsureCoreWebView2Async();
 
-                // Enable autoplay for media (helps with background music)
-                webView.CoreWebView2.Settings.IsAutoplayEnabled = true;
-
                 // Set up virtual host name mapping to serve files via HTTP (fixes CORS for ES modules)
                 // This allows ES modules to load without CORS errors
                 webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
