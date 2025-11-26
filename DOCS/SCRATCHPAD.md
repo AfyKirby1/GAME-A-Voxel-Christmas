@@ -1,41 +1,49 @@
 # Scratchpad
 
-## 2025-11-25: Three.js r181 Upgrade & WebGPU Fix
+## 2025-11-25: WebGL-Only Implementation
 
-### Issue
-- WebGPU renderer was failing with "WebGPURenderer is not a constructor" error in r160
-- Import path was incorrect causing 404 errors
-- Material incompatibility with early WebGPU implementation
+### Decision
+- Project uses WebGL renderer exclusively for maximum compatibility
+- Removed all WebGPU code and references
+- Simplified renderer initialization to WebGL only
 
-### Solution
-1. **Upgraded Three.js**: r160 → r181 (latest as of Nov 2025)
-   - Better WebGPU support
-   - Improved material compatibility with WebGPU
-   - WebGPURenderer now in separate build file
-
-2. **Fixed Import Path**:
-   - Old (r160): Dynamic import from `three/addons/renderers/webgpu/WebGPURenderer.js` (404 error)
-   - New (r181): Import from separate WebGPU build: `https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.webgpu.js`
-   - WebGPURenderer is accessed via: `WebGPUModule.WebGPURenderer`
-
-3. **Enabled Features**:
-   - ✅ Antialiasing enabled
-   - ✅ Automatic WebGPU detection with WebGL fallback
-   - ✅ Better console logging with emoji indicators
-   - ✅ MeshStandardMaterial now compatible with WebGPU
+### Implementation
+1. **Renderer**: Uses `THREE.WebGLRenderer` with antialiasing
+2. **Post-Processing**: Uses `EffectComposer` with `UnrealBloomPass` for bloom effects
+3. **Compatibility**: Works across all modern browsers with WebGL support
 
 ### Files Modified
-- `index.html` - Updated CDN URLs to r181
-- `js/scene-setup.js` - Simplified WebGPU renderer initialization
-- `DOCS/SBOM.md` - Updated version tracking
+- `js/scene-setup.js` - Simplified to WebGL-only renderer
+- `js/ui.js` - Removed WebGPU checking function
+- `js/main.js` - Removed WebGPU references
+- `index.html` - Removed WebGPU import maps and UI elements
+- `css/style.css` - Removed WebGPU status styling
+- `DOCS/` - Removed WebGPU documentation files
 
-### Testing Checklist
-- [ ] Verify WebGPU initializes in Chrome/Edge
-- [ ] Verify WebGL fallback works in Firefox/Safari
-- [ ] Check particle systems render correctly
-- [ ] Verify bloom post-processing works
-- [ ] Test on mobile devices
+### Features
+- ✅ WebGL renderer with antialiasing
+- ✅ EffectComposer post-processing with bloom
+- ✅ Cross-browser compatibility
+- ✅ Clean, simplified codebase
 
-### References
-- Three.js r181: https://github.com/mrdoob/three.js/releases/tag/r181
-- WebGPU Support: https://caniuse.com/webgpu
+## 2025-01-XX: News Reel Enhancements
+
+### RGB LED Border System
+- **Outer Glow**: Double-box technique using `::before` pseudo-element with animated linear gradient
+- **Border Lights**: `::after` pseudo-element with repeating linear gradient creating bar light effect
+- **Animation Speeds**: Optimized for smooth visual flow (6s, 20s, 16s cycles)
+
+### Dynamic Snowflake System
+- **Implementation**: JavaScript-based spawning system in `setupNewsReelSnowflakes()`
+- **Features**:
+  - Random horizontal spawn positions within container bounds
+  - Individual animation durations (6-8 seconds)
+  - Smooth rotation and horizontal drift during fall
+  - Automatic cleanup on animation end
+  - Continuous spawning loop with random intervals (0.5-1.5s)
+  - Maximum 7 concurrent snowflakes for performance
+
+### CSS Animation Details
+- **Snowflake Animation**: Pixel-based `translateY` values (0px to 48px) for precise control
+- **Opacity Curve**: High visibility (0.8) maintained until 85% of animation, then gradual fade
+- **Rotation**: Continuous 540-degree rotation during fall for natural movement
