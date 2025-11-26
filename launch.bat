@@ -1,0 +1,13 @@
+@echo off
+cd /d "%~dp0"
+echo Starting A Voxel Christmas on port 1234...
+echo Checking for existing server on port 1234...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :1234 ^| findstr LISTENING') do (
+    echo Killing process %%a on port 1234...
+    taskkill /F /PID %%a >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
+echo Starting server...
+start http://127.0.0.1:1234/index.html
+npx --yes http-server . -p 1234
+
