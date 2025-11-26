@@ -9,31 +9,31 @@ import { PEAK_HEIGHT } from './config.js';
 async function createRenderer() {
     let renderer;
 
-    // Try WebGPU first (dynamic import to avoid CORS issues)
+    // Try WebGPU first (requires three.webgpu.js build for r181)
     if (navigator.gpu) {
         try {
-            const module = await import('three/addons/renderers/webgpu/WebGPURenderer.js');
+            // Dynamically import the WebGPU build which includes WebGPURenderer
+            const WebGPUModule = await import('https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.webgpu.js');
+            const WebGPURenderer = WebGPUModule.WebGPURenderer;
 
-            // WebGPURenderer is exported as default
-            const WebGPURenderer = module.default;
-
-            if (typeof WebGPURenderer === 'function') {
-                renderer = new WebGPURenderer({ antialias: false });
-                await renderer.init();
-                console.log('WebGPU renderer initialized successfully');
-            } else {
-                console.error('WebGPURenderer not found as default export');
-                throw new Error('WebGPURenderer constructor not found in module');
-            }
+            renderer = new WebGPURenderer({
+                antialias: true,
+                forceWebGL: false
+            });
+            await renderer.init();
+            console.log('✅ WebGPU renderer initialized successfully');
         } catch (error) {
-            console.warn('WebGPU initialization failed, falling back to WebGL:', error);
+            console.warn('⚠️ WebGPU initialization failed, falling back to WebGL:', error);
             renderer = null;
         }
+    } else {
+        console.log('ℹ️ WebGPU not available in this browser');
     }
 
     // Fallback to WebGL
     if (!renderer) {
-        renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        console.log('🔄 Using WebGL renderer');
     }
 
     // Apply common settings
