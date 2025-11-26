@@ -1,11 +1,18 @@
-export function checkWebGPU() {
+export async function checkWebGPU(renderer) {
     const dot = document.getElementById('gpu-dot');
     const label = document.getElementById('gpu-label');
 
-    if (navigator.gpu) {
+    // Check if renderer is WebGPU
+    const isWebGPU = renderer && renderer.isWebGPURenderer === true;
+    
+    if (isWebGPU) {
         dot.style.backgroundColor = '#00ff00';
         dot.style.boxShadow = '0 0 8px #00ff00';
-        label.innerText = "WebGPU: Supported (Unused)";
+        label.innerText = "WebGPU: Active";
+    } else if (navigator.gpu) {
+        dot.style.backgroundColor = '#ffaa00';
+        dot.style.boxShadow = '0 0 8px #ffaa00';
+        label.innerText = "WebGPU: Unavailable (WebGL)";
     } else {
         dot.style.backgroundColor = '#ff3333';
         dot.style.boxShadow = '0 0 8px #ff3333';

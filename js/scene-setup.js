@@ -6,7 +6,46 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { PEAK_HEIGHT } from './config.js';
 
-export function setupScene(SCENE_OPTS) {
+async function createRenderer() {
+    let renderer;
+
+    // Try WebGPU first (dynamic import to avoid CORS issues)
+    if (navigator.gpu) {
+        try {
+            const module = await import('three/addons/renderers/webgpu/WebGPURenderer.js');
+
+            // WebGPURenderer is exported as default
+            const WebGPURenderer = module.default;
+
+            if (typeof WebGPURenderer === 'function') {
+                renderer = new WebGPURenderer({ antialias: false });
+                await renderer.init();
+                console.log('WebGPU renderer initialized successfully');
+            } else {
+                console.error('WebGPURenderer not found as default export');
+                throw new Error('WebGPURenderer constructor not found in module');
+            }
+        } catch (error) {
+            console.warn('WebGPU initialization failed, falling back to WebGL:', error);
+            renderer = null;
+        }
+    }
+
+    // Fallback to WebGL
+    if (!renderer) {
+        renderer = new THREE.WebGLRenderer({ antialias: false });
+    }
+
+    // Apply common settings
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    document.body.appendChild(renderer.domElement);
+
+    return renderer;
+}
+
+export async function setupScene(SCENE_OPTS) {
     // 1. Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_OPTS.bgColor);
@@ -16,12 +55,8 @@ export function setupScene(SCENE_OPTS) {
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(75, 45, 75);
 
-    // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    document.body.appendChild(renderer.domElement);
+    // 3. Renderer (async initialization)
+    const renderer = await createRenderer();
 
     // 4. Lighting
     const ambient = new THREE.AmbientLight(0x404070, 0.6);

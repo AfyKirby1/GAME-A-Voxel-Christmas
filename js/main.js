@@ -7,9 +7,9 @@ import { setupUI, checkWebGPU } from './ui.js';
 let scene, camera, renderer, composer, controls;
 let particleManager;
 
-function init() {
+async function init() {
     // 1. Setup Scene
-    const sceneObjects = setupScene(SCENE_OPTS);
+    const sceneObjects = await setupScene(SCENE_OPTS);
     scene = sceneObjects.scene;
     camera = sceneObjects.camera;
     renderer = sceneObjects.renderer;
@@ -25,7 +25,7 @@ function init() {
     particleManager = new ParticleManager(scene, SCENE_OPTS);
 
     // 4. UI
-    checkWebGPU();
+    await checkWebGPU(renderer);
     setupUI();
 
     // 5. Hide Loading
