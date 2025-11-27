@@ -223,7 +223,8 @@ function setupVolumeSlider(type, initialValue) {
         slider.classList.add('dragging');
         e.preventDefault();
         e.stopPropagation();
-        // Don't update position on mousedown - wait for first mousemove
+        // Update position immediately to prevent jumping
+        updateFromEvent(e, true);
     };
 
     // Handle drag movement
