@@ -1249,7 +1249,6 @@ canvas {
 
 .volume-slider.dragging .volume-slider-handle {
     transition: none !important;
-    left: var(--handle-position, 0%) !important;
 }
 
 .volume-slider-handle:hover {

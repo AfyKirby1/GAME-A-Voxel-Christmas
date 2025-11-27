@@ -197,94 +197,83 @@ function setupVolumeSlider(type, initialValue) {
 
     let isDragging = false;
     let animationFrameId = null;
-    let dragOffset = 0; // Offset from handle center when dragging starts
 
     // Set initial value
     updateSliderValue(type, initialValue, false);
 
-    // Mouse events
+    // Simple function to calculate percentage from mouse/touch position
+    const getPercentageFromEvent = (clientX) => {
+        const rect = track.getBoundingClientRect();
+        const x = clientX - rect.left;
+        return Math.max(0, Math.min(1, x / rect.width));
+    };
+
+    // Update slider value from event
+    const updateFromEvent = (e, isDraggingFlag) => {
+        const clientX = e.clientX || e.touches?.[0]?.clientX;
+        if (clientX === undefined) return;
+        
+        const percent = getPercentageFromEvent(clientX);
+        updateSliderValue(type, percent, isDraggingFlag);
+    };
+
+    // Start dragging
     const startDrag = (e) => {
         isDragging = true;
         slider.classList.add('dragging');
         e.preventDefault();
         e.stopPropagation();
-        
-        // Calculate offset from handle center to mouse position
-        // This offset represents how far the mouse is from the handle center
-        // Positive = mouse is right of center, Negative = mouse is left of center
-        const handleRect = handle.getBoundingClientRect();
-        const handleCenterX = handleRect.left + handleRect.width / 2;
-        dragOffset = e.clientX - handleCenterX;
-        
-        // Don't update position on mousedown - wait for mousemove
-        // This prevents the handle from jumping when clicked
+        // Don't update position on mousedown - wait for first mousemove
     };
 
-    const drag = (e) => {
+    // Handle drag movement
+    const handleDrag = (e) => {
         if (!isDragging) return;
         e.preventDefault();
         
-        // Cancel any pending animation frame
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
         
-        // Use requestAnimationFrame for smooth updates
         animationFrameId = requestAnimationFrame(() => {
-            updateSliderFromEvent(e, type, true, dragOffset);
+            updateFromEvent(e, true);
         });
     };
 
-    let justFinishedDragging = false;
-    
+    // Stop dragging
     const stopDrag = () => {
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
         }
         isDragging = false;
-        dragOffset = 0;
         slider.classList.remove('dragging');
-        
-        // Prevent track click from firing immediately after drag ends
-        justFinishedDragging = true;
-        setTimeout(() => {
-            justFinishedDragging = false;
-        }, 100);
     };
 
-    // Click on track (but not on handle)
+    // Click on track to jump to position
     track.addEventListener('click', (e) => {
-        // Don't handle clicks if we just finished dragging or if clicking on handle
-        if (justFinishedDragging || isDragging || e.target === handle || handle.contains(e.target)) {
-            return;
+        // Only handle if not dragging and not clicking on handle
+        if (!isDragging && e.target !== handle && !handle.contains(e.target)) {
+            updateFromEvent(e, false);
         }
-        updateSliderFromEvent(e, type, false, 0);
     });
 
-    // Drag handle - prevent track click from firing when clicking handle
+    // Handle mouse events
     handle.addEventListener('mousedown', (e) => {
-        e.stopPropagation(); // Prevent track click event
+        e.stopPropagation();
         startDrag(e);
     });
-    document.addEventListener('mousemove', drag);
+    
+    document.addEventListener('mousemove', handleDrag);
     document.addEventListener('mouseup', stopDrag);
 
-    // Touch events for mobile
+    // Handle touch events
     handle.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        slider.classList.add('dragging');
         e.preventDefault();
         e.stopPropagation();
-        
-        // Calculate offset from handle center for touch
-        const handleRect = handle.getBoundingClientRect();
-        const handleCenterX = handleRect.left + handleRect.width / 2;
-        dragOffset = e.touches[0].clientX - handleCenterX;
-        
-        // Don't update position on touchstart - wait for touchmove
+        startDrag(e);
     });
-
+    
     document.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         e.preventDefault();
@@ -294,40 +283,11 @@ function setupVolumeSlider(type, initialValue) {
         }
         
         animationFrameId = requestAnimationFrame(() => {
-            updateSliderFromEvent(e.touches[0], type, true, dragOffset);
+            updateFromEvent(e, true);
         });
     });
-
+    
     document.addEventListener('touchend', stopDrag);
-}
-
-function updateSliderFromEvent(e, type, isDragging, offset = 0) {
-    const slider = document.getElementById(`${type}-volume-slider`);
-    const track = slider?.querySelector('.volume-slider-track');
-    if (!slider || !track) return;
-
-    const rect = track.getBoundingClientRect();
-    
-    // When dragging the handle, account for the offset from handle center
-    // offset = mouseX - handleCenterX (where mouse was when drag started)
-    // We want: newHandleCenterX = newMouseX - offset
-    // So: newHandleCenterX relative to track = (e.clientX - offset) - rect.left
-    // But wait - if offset is negative (clicked left of center), we subtract negative = add
-    // That would move handle right, which is wrong!
-    // 
-    // Correct logic: We want handle center to maintain same distance from mouse
-    // If we clicked 5px left of center, handle should be 5px right of mouse
-    // So: handleCenterX = mouseX + 5 = mouseX - (-5) = mouseX - offset
-    // This is correct! The issue might be elsewhere...
-    
-    // Actually, let's think differently: offset is how far mouse is from handle center
-    // To keep that relationship: handleCenterX = mouseX - offset
-    // So position relative to track: (mouseX - offset) - rect.left
-    const handleCenterX = e.clientX - offset;
-    const x = handleCenterX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    
-    updateSliderValue(type, percentage, isDragging);
 }
 
 // Throttle tracking for slider updates
