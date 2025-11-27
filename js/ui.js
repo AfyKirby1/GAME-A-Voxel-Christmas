@@ -1,3 +1,12 @@
+// Import ambient sound functions (will be loaded when needed)
+let ambientSoundModule = null;
+async function getAmbientSoundModule() {
+    if (!ambientSoundModule) {
+        ambientSoundModule = await import('./ambient-sound.js');
+    }
+    return ambientSoundModule;
+}
+
 export function setupTechInfoPanel() {
     const toggleBtn = document.getElementById('tech-toggle-btn');
     const panel = document.getElementById('tech-info-panel');
@@ -26,11 +35,392 @@ export function setupTechInfoPanel() {
     });
 }
 
+export function setupSettingsPanel() {
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const closeBtn = document.getElementById('close-settings');
+
+    if (!settingsBtn || !settingsPanel) {
+        console.warn('Settings panel elements not found');
+        return;
+    }
+
+    // Initialize panel as hidden
+    settingsPanel.classList.add('settings-panel-hidden');
+    settingsPanel.classList.remove('settings-panel-visible');
+
+    // Show panel when Settings button is clicked
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Disable countdown timer and auto-hide logic
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
+        // Hide and remove the countdown timer
+        const timer = document.getElementById('countdown-timer');
+        if (timer) {
+            timer.style.display = 'none';
+        }
+        
+        settingsPanel.classList.remove('settings-panel-hidden');
+        settingsPanel.classList.add('settings-panel-visible');
+    });
+
+    // Close panel when close button is clicked
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.remove('settings-panel-visible');
+            settingsPanel.classList.add('settings-panel-hidden');
+        });
+    }
+
+    // Setup Tab Navigation
+    setupSettingsTabs();
+
+    // Setup Audio Panel (after tabs so elements exist)
+    setupAudioPanel();
+}
+
+function setupSettingsTabs() {
+    const tabs = document.querySelectorAll('.settings-tab');
+    const tabContents = document.querySelectorAll('.settings-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetTab = tab.getAttribute('data-tab');
+
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const targetContent = document.getElementById(`tab-${targetTab}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+}
+
+function setupAudioPanel() {
+    const masterAudioToggle = document.getElementById('toggle-master-audio');
+    const musicToggle = document.getElementById('toggle-music');
+    const bgMusic = document.getElementById('bg-music');
+
+    if (!masterAudioToggle || !musicToggle || !bgMusic) {
+        console.warn('Audio panel elements not found');
+        return;
+    }
+
+    // Initialize audio state from localStorage or defaults
+    const masterAudioEnabled = localStorage.getItem('masterAudioEnabled') !== 'false';
+    const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
+    const masterVolume = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
+    const musicVolume = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+
+    masterAudioToggle.checked = masterAudioEnabled;
+    musicToggle.checked = musicEnabled;
+
+    // Initialize volume sliders
+    setupVolumeSlider('master', masterVolume);
+    setupVolumeSlider('music', musicVolume);
+
+    // Apply initial state
+    applyAudioSettings(masterAudioEnabled, musicEnabled, masterVolume, musicVolume);
+
+    // Update slider disabled states
+    updateSliderStates();
+
+    // Master Audio Toggle
+    masterAudioToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('masterAudioEnabled', enabled);
+        const masterVol = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
+        const musicVol = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+        applyAudioSettings(enabled, musicToggle.checked, masterVol, musicVol);
+        updateSliderStates();
+        console.log('Master Audio:', enabled ? 'ON' : 'OFF');
+    });
+
+    // Music Toggle
+    musicToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('musicEnabled', enabled);
+        const masterVol = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
+        const musicVol = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+        applyAudioSettings(masterAudioToggle.checked, enabled, masterVol, musicVol);
+        updateSliderStates();
+        console.log('Background Music:', enabled ? 'ON' : 'OFF');
+    });
+}
+
+function updateSliderStates() {
+    const masterToggle = document.getElementById('toggle-master-audio');
+    const musicToggle = document.getElementById('toggle-music');
+    const masterControl = document.querySelector('#tab-audio .audio-control-item:first-child');
+    const musicControl = document.querySelector('#tab-audio .audio-control-item:last-child');
+
+    if (masterControl) {
+        if (masterToggle && !masterToggle.checked) {
+            masterControl.classList.add('disabled');
+        } else {
+            masterControl.classList.remove('disabled');
+        }
+    }
+
+    if (musicControl) {
+        if (musicToggle && !musicToggle.checked) {
+            musicControl.classList.add('disabled');
+        } else {
+            musicControl.classList.remove('disabled');
+        }
+    }
+}
+
+function setupVolumeSlider(type, initialValue) {
+    const slider = document.getElementById(`${type}-volume-slider`);
+    const track = slider?.querySelector('.volume-slider-track');
+    const fill = document.getElementById(`${type}-volume-fill`);
+    const handle = document.getElementById(`${type}-volume-handle`);
+    const percentage = document.getElementById(`${type}-volume-percentage`);
+
+    if (!slider || !track || !fill || !handle || !percentage) {
+        console.warn(`Volume slider elements not found for ${type}`);
+        return;
+    }
+
+    let isDragging = false;
+    let animationFrameId = null;
+    let dragOffset = 0; // Offset from handle center when dragging starts
+
+    // Set initial value
+    updateSliderValue(type, initialValue, false);
+
+    // Mouse events
+    const startDrag = (e) => {
+        isDragging = true;
+        slider.classList.add('dragging');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Calculate offset from handle center to mouse position
+        // This offset represents how far the mouse is from the handle center
+        // Positive = mouse is right of center, Negative = mouse is left of center
+        const handleRect = handle.getBoundingClientRect();
+        const handleCenterX = handleRect.left + handleRect.width / 2;
+        dragOffset = e.clientX - handleCenterX;
+        
+        // Don't update position on mousedown - wait for mousemove
+        // This prevents the handle from jumping when clicked
+    };
+
+    const drag = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        // Cancel any pending animation frame
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
+        // Use requestAnimationFrame for smooth updates
+        animationFrameId = requestAnimationFrame(() => {
+            updateSliderFromEvent(e, type, true, dragOffset);
+        });
+    };
+
+    let justFinishedDragging = false;
+    
+    const stopDrag = () => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        isDragging = false;
+        dragOffset = 0;
+        slider.classList.remove('dragging');
+        
+        // Prevent track click from firing immediately after drag ends
+        justFinishedDragging = true;
+        setTimeout(() => {
+            justFinishedDragging = false;
+        }, 100);
+    };
+
+    // Click on track (but not on handle)
+    track.addEventListener('click', (e) => {
+        // Don't handle clicks if we just finished dragging or if clicking on handle
+        if (justFinishedDragging || isDragging || e.target === handle || handle.contains(e.target)) {
+            return;
+        }
+        updateSliderFromEvent(e, type, false, 0);
+    });
+
+    // Drag handle - prevent track click from firing when clicking handle
+    handle.addEventListener('mousedown', (e) => {
+        e.stopPropagation(); // Prevent track click event
+        startDrag(e);
+    });
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDrag);
+
+    // Touch events for mobile
+    handle.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        slider.classList.add('dragging');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Calculate offset from handle center for touch
+        const handleRect = handle.getBoundingClientRect();
+        const handleCenterX = handleRect.left + handleRect.width / 2;
+        dragOffset = e.touches[0].clientX - handleCenterX;
+        
+        // Don't update position on touchstart - wait for touchmove
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
+        animationFrameId = requestAnimationFrame(() => {
+            updateSliderFromEvent(e.touches[0], type, true, dragOffset);
+        });
+    });
+
+    document.addEventListener('touchend', stopDrag);
+}
+
+function updateSliderFromEvent(e, type, isDragging, offset = 0) {
+    const slider = document.getElementById(`${type}-volume-slider`);
+    const track = slider?.querySelector('.volume-slider-track');
+    if (!slider || !track) return;
+
+    const rect = track.getBoundingClientRect();
+    
+    // When dragging the handle, account for the offset from handle center
+    // offset = mouseX - handleCenterX (where mouse was when drag started)
+    // We want: newHandleCenterX = newMouseX - offset
+    // So: newHandleCenterX relative to track = (e.clientX - offset) - rect.left
+    // But wait - if offset is negative (clicked left of center), we subtract negative = add
+    // That would move handle right, which is wrong!
+    // 
+    // Correct logic: We want handle center to maintain same distance from mouse
+    // If we clicked 5px left of center, handle should be 5px right of mouse
+    // So: handleCenterX = mouseX + 5 = mouseX - (-5) = mouseX - offset
+    // This is correct! The issue might be elsewhere...
+    
+    // Actually, let's think differently: offset is how far mouse is from handle center
+    // To keep that relationship: handleCenterX = mouseX - offset
+    // So position relative to track: (mouseX - offset) - rect.left
+    const handleCenterX = e.clientX - offset;
+    const x = handleCenterX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    
+    updateSliderValue(type, percentage, isDragging);
+}
+
+// Throttle tracking for slider updates
+const sliderThrottle = {
+    lastSave: {},
+    lastAudioUpdate: {}
+};
+
+function updateSliderValue(type, value, isDragging = false) {
+    const slider = document.getElementById(`${type}-volume-slider`);
+    const fill = document.getElementById(`${type}-volume-fill`);
+    const handle = document.getElementById(`${type}-volume-handle`);
+    const percentage = document.getElementById(`${type}-volume-percentage`);
+
+    if (!fill || !handle || !percentage) return;
+
+    const clampedValue = Math.max(0, Math.min(1, value));
+    const percentageValue = Math.round(clampedValue * 100);
+    const percentageString = `${clampedValue * 100}%`;
+
+    // Update visual elements instantly (no transitions during drag)
+    fill.style.width = percentageString;
+    handle.style.left = percentageString;
+    percentage.textContent = `${percentageValue}%`;
+
+    // Save to localStorage (throttle during dragging to reduce writes)
+    const now = Date.now();
+    if (!isDragging || !sliderThrottle.lastSave[type] || now - sliderThrottle.lastSave[type] > 50) {
+        localStorage.setItem(`${type}Volume`, clampedValue.toString());
+        sliderThrottle.lastSave[type] = now;
+    }
+
+    // Apply to audio (throttle during dragging, but update more frequently for smooth audio)
+    if (!isDragging || !sliderThrottle.lastAudioUpdate[type] || now - sliderThrottle.lastAudioUpdate[type] > 16) {
+        applyAudioSettings(
+            document.getElementById('toggle-master-audio')?.checked ?? true,
+            document.getElementById('toggle-music')?.checked ?? true,
+            type === 'master' ? clampedValue : parseFloat(localStorage.getItem('masterVolume')) || 1.0,
+            type === 'music' ? clampedValue : parseFloat(localStorage.getItem('musicVolume')) || 1.0
+        );
+        sliderThrottle.lastAudioUpdate[type] = now;
+    }
+}
+
+function applyAudioSettings(masterEnabled, musicEnabled, masterVolume, musicVolume) {
+    const bgMusic = document.getElementById('bg-music');
+    if (!bgMusic) return;
+
+    // Clamp volumes
+    const masterVol = Math.max(0, Math.min(1, masterVolume || 1.0));
+    const musicVol = Math.max(0, Math.min(1, musicVolume || 1.0));
+
+    // Control ambient sound volume (async, but non-blocking)
+    getAmbientSoundModule().then(module => {
+        const { stopAmbientSound, setAmbientVolume, isAmbientPlaying } = module;
+        
+        if (!masterEnabled) {
+            // Master audio off - stop ambient sound if playing
+            if (isAmbientPlaying()) {
+                stopAmbientSound();
+            }
+        } else {
+            // Master on - update ambient sound volume
+            setAmbientVolume(masterVol);
+        }
+    }).catch(err => {
+        // Ambient sound module not available yet (not in first-person mode)
+        // This is fine, volume will be set when entering first-person mode
+    });
+
+    if (!masterEnabled) {
+        // Master audio off - mute everything
+        bgMusic.volume = 0;
+        bgMusic.pause();
+    } else if (musicEnabled) {
+        // Master on, music on - apply volume (master * music)
+        bgMusic.volume = masterVol * musicVol;
+        if (bgMusic.paused) {
+            bgMusic.play().catch(err => {
+                console.warn('Could not play music:', err);
+            });
+        }
+    } else {
+        // Master on, music off - mute music but keep master enabled
+        bgMusic.volume = 0;
+        bgMusic.pause();
+    }
+}
+
 export function setupWorldGenPanel() {
     const playBtn = document.getElementById('play-btn');
     const worldGenPanel = document.getElementById('world-gen-panel');
     const closeBtn = document.getElementById('close-world-gen');
-    const generateBtn = document.getElementById('generate-world-btn');
 
     if (!playBtn || !worldGenPanel) {
         console.warn('World gen panel elements not found');
@@ -41,22 +431,22 @@ export function setupWorldGenPanel() {
     worldGenPanel.classList.add('world-gen-panel-hidden');
     worldGenPanel.classList.remove('world-gen-panel-visible');
 
-    // Populate values from config (will be imported in main.js)
-    import('./config.js').then(({ SCENE_OPTS }) => {
-        const worldSizeEl = document.getElementById('world-size');
-        const treeCountEl = document.getElementById('tree-count');
-        const snowCountEl = document.getElementById('snow-count');
-        const leafCountEl = document.getElementById('leaf-count');
-
-        if (worldSizeEl) worldSizeEl.textContent = `${SCENE_OPTS.worldRadius} blocks`;
-        if (treeCountEl) treeCountEl.textContent = SCENE_OPTS.treeCount;
-        if (snowCountEl) snowCountEl.textContent = SCENE_OPTS.snowCount.toLocaleString();
-        if (leafCountEl) leafCountEl.textContent = SCENE_OPTS.leafCount.toLocaleString();
-    });
-
     // Show panel when Play button is clicked
     playBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        
+        // Disable countdown timer and auto-hide logic
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
+        // Hide and remove the countdown timer
+        const timer = document.getElementById('countdown-timer');
+        if (timer) {
+            timer.style.display = 'none';
+        }
+        
         worldGenPanel.classList.remove('world-gen-panel-hidden');
         worldGenPanel.classList.add('world-gen-panel-visible');
     });
@@ -70,45 +460,189 @@ export function setupWorldGenPanel() {
         });
     }
 
-    // Handle generate world button
+    // Handle toggle switches
+    const treeToggle = document.getElementById('toggle-trees');
+    const lightsToggle = document.getElementById('toggle-lights');
+    const houseToggle = document.getElementById('toggle-house');
+    const hillsToggle = document.getElementById('toggle-hills');
+
+    if (treeToggle) {
+        treeToggle.addEventListener('change', (e) => {
+            console.log('Trees:', e.target.checked ? 'ON' : 'OFF');
+            // TODO: Implement tree visibility toggle
+        });
+    }
+
+    if (lightsToggle) {
+        lightsToggle.addEventListener('change', (e) => {
+            console.log('Christmas Lights:', e.target.checked ? 'ON' : 'OFF');
+            // TODO: Implement lights visibility toggle
+        });
+    }
+
+    if (houseToggle) {
+        houseToggle.addEventListener('change', (e) => {
+            console.log('House:', e.target.checked ? 'ON' : 'OFF');
+            // TODO: Implement house visibility toggle
+        });
+    }
+
+    if (hillsToggle) {
+        hillsToggle.addEventListener('change', (e) => {
+            console.log('Hills:', e.target.checked ? 'ON' : 'OFF');
+            // TODO: Implement hills visibility toggle
+        });
+    }
+    
+    // Handle Generate World button
+    const generateBtn = document.getElementById('generate-world-btn');
     if (generateBtn) {
-        generateBtn.addEventListener('click', () => {
-            // Update progress
-            const progressFill = document.getElementById('progress-fill');
-            const progressText = document.getElementById('progress-text');
+        generateBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             
-            if (progressFill && progressText) {
-                progressFill.style.width = '0%';
-                progressText.textContent = 'Generating terrain...';
+            // Read toggle states
+            const options = {
+                trees: treeToggle ? treeToggle.checked : true,
+                lights: lightsToggle ? lightsToggle.checked : true,
+                house: houseToggle ? houseToggle.checked : true,
+                hills: hillsToggle ? hillsToggle.checked : true
+            };
+            
+            // Disable button during generation
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
+            
+            // Import modules
+            const { regenerateWorld, enterFirstPersonMode } = await import('./main.js');
+            const { showLoadingScreen, hideLoadingScreen, updateProgress } = await import('./loading-screen.js');
+            
+            try {
+                // Hide world generation panel immediately
+                worldGenPanel.classList.remove('world-gen-panel-visible');
+                worldGenPanel.classList.add('world-gen-panel-hidden');
                 
-                // Simulate progress
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 10;
-                    progressFill.style.width = progress + '%';
-                    
-                    if (progress === 30) {
-                        progressText.textContent = 'Placing trees...';
-                    } else if (progress === 60) {
-                        progressText.textContent = 'Adding particles...';
-                    } else if (progress === 90) {
-                        progressText.textContent = 'Finalizing...';
-                    } else if (progress >= 100) {
-                        clearInterval(interval);
-                        progressText.textContent = 'World generated!';
-                        generateBtn.disabled = true;
-                        generateBtn.textContent = 'World Ready';
-                        
-                        // Close panel after a moment
-                        setTimeout(() => {
-                            worldGenPanel.classList.remove('world-gen-panel-visible');
-                            worldGenPanel.classList.add('world-gen-panel-hidden');
-                        }, 1000);
+                // Show loading screen (this will hide all UI elements)
+                showLoadingScreen();
+                
+                // Create progress callback
+                const progressCallback = (percentage, statusText) => {
+                    updateProgress(percentage, statusText);
+                };
+                
+                // Regenerate world with progress tracking
+                const groundHeight = await regenerateWorld(options, progressCallback);
+                
+                // Show "Entering World..." message
+                updateProgress(100, 'Entering world...');
+                
+                // Small delay to show the final message
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Hide loading screen
+                hideLoadingScreen();
+                
+                // Small delay for smooth transition
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Enter first-person mode
+                enterFirstPersonMode(groundHeight);
+                
+                // Ensure all UI is hidden (loading screen already did this, but double-check)
+                hideUI();
+                hideGameUIButtons();
+                
+                console.log('World generated and first-person mode activated');
+            } catch (error) {
+                console.error('Error generating world:', error);
+                
+                // Hide loading screen on error
+                const { hideLoadingScreen } = await import('./loading-screen.js');
+                hideLoadingScreen();
+                
+                // Restore UI elements that were hidden
+                const titleScreen = document.getElementById('title-screen');
+                const newsReel = document.getElementById('news-reel');
+                const audioWarning = document.querySelector('.audio-warning');
+                const uiButtons = document.querySelectorAll('.ui-btn, .tech-toggle-btn');
+                
+                if (titleScreen) {
+                    titleScreen.style.opacity = '';
+                    titleScreen.style.visibility = '';
+                    titleScreen.style.pointerEvents = '';
+                    titleScreen.style.display = '';
+                }
+                
+                if (newsReel) {
+                    newsReel.style.opacity = '';
+                    newsReel.style.visibility = '';
+                    newsReel.style.pointerEvents = '';
+                    newsReel.style.display = '';
+                }
+                
+                if (audioWarning) {
+                    audioWarning.style.opacity = '';
+                    audioWarning.style.visibility = '';
+                    audioWarning.style.pointerEvents = '';
+                    audioWarning.style.display = '';
+                }
+                
+                uiButtons.forEach(btn => {
+                    if (btn) {
+                        btn.style.opacity = '';
+                        btn.style.visibility = '';
+                        btn.style.pointerEvents = '';
+                        btn.style.display = '';
                     }
-                }, 100);
+                });
+                
+                // Reset button
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate World';
+                
+                // Show world gen panel again
+                worldGenPanel.classList.remove('world-gen-panel-hidden');
+                worldGenPanel.classList.add('world-gen-panel-visible');
+                worldGenPanel.style.opacity = '';
+                worldGenPanel.style.visibility = '';
+                worldGenPanel.style.pointerEvents = '';
+                worldGenPanel.style.display = '';
             }
         });
     }
+}
+
+// Function to hide game UI buttons (used when entering first-person mode)
+function hideGameUIButtons() {
+    const uiToggle = document.getElementById('ui-toggle');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const techBtn = document.getElementById('tech-toggle-btn');
+    const quitBtn = document.getElementById('quit-btn');
+    
+    const hideButton = (btn) => {
+        if (btn) {
+            btn.style.transition = 'opacity 0.5s ease';
+            btn.style.opacity = '0';
+            btn.style.pointerEvents = 'none';
+            btn.style.cursor = 'default';
+            btn.classList.add('ui-hidden');
+            // After fade, completely remove from layout
+            setTimeout(() => {
+                btn.style.display = 'none';
+                btn.style.visibility = 'hidden';
+                btn.style.position = 'absolute';
+                btn.style.left = '-9999px';
+                btn.style.top = '-9999px';
+                btn.style.width = '0';
+                btn.style.height = '0';
+                btn.style.overflow = 'hidden';
+            }, 500);
+        }
+    };
+    
+    hideButton(uiToggle);
+    hideButton(fullscreenBtn);
+    hideButton(techBtn);
+    hideButton(quitBtn);
 }
 
 function setupNewsReelSnowflakes() {
@@ -172,10 +706,16 @@ function setupCountdownTimer() {
     const title = document.getElementById('title-screen');
     if (!timer || !title) return;
 
+    // Clear any existing countdown
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+
     let countdown = 5;
     timer.textContent = countdown;
 
-    const countdownInterval = setInterval(() => {
+    countdownInterval = setInterval(() => {
         countdown--;
         timer.textContent = countdown;
 
@@ -189,6 +729,7 @@ function setupCountdownTimer() {
 
         if (countdown <= 0) {
             clearInterval(countdownInterval);
+            countdownInterval = null;
             
             // Completely remove timer from DOM
             timer.style.display = 'none';
@@ -284,14 +825,26 @@ export function setupSplashScreen() {
             }
         }, 100);
         
-        // Start music when splash is dismissed
+        // Start music when splash is dismissed (if enabled)
         const bgMusic = document.getElementById('bg-music');
         if (bgMusic) {
-            bgMusic.play().then(() => {
-                console.log('✅ Background music started from splash screen!');
-            }).catch(err => {
-                console.error('Could not start music:', err);
-            });
+            // Check if music is enabled and apply volume
+            const masterAudioEnabled = localStorage.getItem('masterAudioEnabled') !== 'false';
+            const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
+            const masterVolume = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
+            const musicVolume = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+            
+            if (masterAudioEnabled && musicEnabled) {
+                bgMusic.volume = masterVolume * musicVolume;
+                bgMusic.play().then(() => {
+                    console.log('✅ Background music started from splash screen!');
+                }).catch(err => {
+                    console.error('Could not start music:', err);
+                });
+            } else {
+                bgMusic.volume = 0;
+                console.log('Background music disabled in settings');
+            }
         }
         
         // Start the countdown timer now that splash is dismissed
@@ -319,6 +872,7 @@ export function setupSplashScreen() {
 
 // Shared UI state and functions - accessible to countdown timer
 let uiVisible = true;
+let countdownInterval = null;
 
 // Global UI control functions - can be called from anywhere
 function hideUI() {
@@ -380,8 +934,8 @@ function showUI() {
     menuButtons.forEach(btn => {
         btn.classList.remove('ui-hidden');
         btn.style.pointerEvents = 'auto';
-        // Only restore cursor for play button, others stay not-allowed
-        if (btn.id === 'play-btn') {
+        // Restore cursor for play and settings buttons
+        if (btn.id === 'play-btn' || btn.id === 'settings-btn') {
             btn.style.cursor = 'pointer';
         }
     });
@@ -475,6 +1029,7 @@ export function setupUI() {
     // But we can set up the event handlers now
     setupTechInfoPanel();
     setupWorldGenPanel();
+    setupSettingsPanel();
     setupNewsReelSnowflakes();
     // Countdown timer will be started when splash screen is dismissed
     // setupCountdownTimer(); // Moved to splash dismissal

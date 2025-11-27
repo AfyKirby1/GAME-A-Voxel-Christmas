@@ -9,6 +9,11 @@
 - **three/addons**: `0.181.2` (via CDN - jsDelivr)
   - URL: `https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/`
   - Installed: 2025-11-25
+- **Tone.js**: `14.7.77` (via CDN - jsDelivr)
+  - URL: `https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js`
+  - Purpose: Procedural ambient wind sound generation
+  - Installed: 2025-01-27
+  - License: MIT
 
 ### .NET Packages (NuGet)
 - **Microsoft.Web.WebView2**: `1.0.2849.39`

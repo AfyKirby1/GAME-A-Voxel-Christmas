@@ -3,6 +3,73 @@
 ## [Unreleased]
 
 ### Added
+- **Ambient Wind Sound System**:
+  - Procedural wind ambient sound using Tone.js
+  - Realistic wind generation with PinkNoise, low-pass filter, and LFO modulation
+  - Natural wind gusts via frequency modulation (0.2 Hz cycle)
+  - Automatic start/stop when entering/exiting first-person mode
+  - Integration with master audio settings (respects toggle and volume)
+  - Smooth volume transitions and proper audio context management
+  - Base volume set to 35% for subtle, non-intrusive ambience
+  - Console warning suppression for expected browser audio security messages
+- **World Loading Screen**: 
+  - Full-screen loading overlay with animated progress bar (z-index: 9999)
+  - Fully opaque background that completely blocks menu and game world view
+  - Automatically hides ALL UI elements when shown (title, menu, buttons, news reel, panels)
+  - Real-time percentage display (0-100%)
+  - Dynamic status text updates during generation stages:
+    - "Initializing world generation..." (0%)
+    - "Generating terrain..." (0-30%)
+    - "Building structures..." (30-60%)
+    - "Placing trees and decorations..." (60-90%)
+    - "Finalizing world..." (90-100%)
+    - "Entering world..." (100%)
+  - Animated spinner with multiple rotating rings
+  - Shimmer effect on progress bar fill
+  - Smooth fade-in/fade-out transitions
+  - Progress tracking integrated with world generation via callback system
+  - Error handling with UI restoration if generation fails
+- **Settings Panel Enhancements**:
+  - Tabbed interface with Audio, Controls, and Video tabs
+  - Modern tab navigation with active state indicators
+  - Smooth tab switching with fade animations
+- **Audio Settings with Volume Sliders**:
+  - Draggable volume sliders for Master Audio and Background Music
+  - Real-time percentage display (0-100%)
+  - Instant responsive dragging (no lag)
+  - Toggle switches for enable/disable
+  - Volume calculation: Master × Music = final volume
+  - localStorage persistence for volume settings
+  - Visual feedback with glow effects and smooth animations
+  - Disabled state styling when toggles are off
+- **First-Person Camera Mode**: 
+  - Full first-person view with mouse look controls (PointerLockControls)
+  - Camera spawns at ground level with proper eye height (1.6 units)
+  - Smooth transition from orbit camera to first-person mode
+  - Pitch limits prevent camera flipping
+  - Pointer lock for immersive mouse look experience
+  - Main menu background music automatically stops when entering game mode
+- **Dual World System**:
+  - **Menu World**: Separate world for menu/preview viewing (75 block radius)
+  - **Game World**: Separate larger world for gameplay (150 block radius, 2x size)
+  - Menu world remains intact when generating game world
+  - Game world generated in dedicated THREE.Group container
+  - Both worlds can coexist without interference
+- **World Generation System**:
+  - Interactive world generation panel with toggle switches
+  - Conditional world generation based on user preferences:
+    - Trees toggle (enable/disable tree generation)
+    - Christmas Lights toggle (enable/disable lights on trees)
+    - House toggle (enable/disable house structure)
+    - Hills toggle (enable/disable terrain elevation)
+  - Async world generation with Promise-based flow
+  - Progress feedback via button text updates
+  - Smooth transitions using requestAnimationFrame
+  - Ground height calculation for proper camera positioning (supports both world sizes)
+- **Game UI Button Hiding**: 
+  - All game UI buttons (tech, quit, fullscreen, show UI) automatically hide when entering first-person mode
+  - Complete UI removal for immersive gameplay experience
+  - Buttons fade out and are removed from layout
 - **WebView2 Windows Packaging**: Lightweight Windows executable packaging using .NET and WebView2
   - Portable distribution package (~1-5MB)
   - Fullscreen application wrapper
@@ -28,13 +95,54 @@
   - **Double-Click to Wake**: Double-click anywhere on the canvas to restore the UI after auto-hide
   - **Interaction Disabling**: When UI is hidden, all buttons (Play, Settings, About) are disabled with no hover effects or click interactions
   - **Complete State Restoration**: UI restoration properly restores all elements including news reel, audio warning, and button positions
+- **Settings Panel Enhancements**:
+  - Tabbed interface with Audio, Controls, and Video tabs
+  - Modern tab navigation with active state indicators
+  - Smooth tab switching with fade animations
+- **Audio Settings with Volume Sliders**:
+  - Draggable volume sliders for Master Audio and Background Music
+  - Real-time percentage display (0-100%)
+  - Instant responsive dragging (no lag)
+  - Toggle switches for enable/disable
+  - Volume calculation: Master × Music = final volume
+  - localStorage persistence for volume settings
+  - Visual feedback with glow effects and smooth animations
+  - Disabled state styling when toggles are off
 
 ### Changed
 - News reel styling updated to pill shape with RGB LED border animation.
 - Play button made clickable with enhanced visual feedback.
+- Settings button now has glowy snowy appearance matching Play button.
 - RGB animations slowed down for smoother visual effect (outer: 3s→6s, border: 12s→20s, inner: 10s→16s).
 - News reel snowflakes system converted from CSS to JavaScript for dynamic random spawning.
 - UI state management refactored for unified hide/show system used by both manual toggle and auto-hide.
+- **World Generation Panel Simplified**: 
+  - Removed progress bar and generate button simulation
+  - Simplified to show world size (64x64) and toggle switches
+  - Generate World button now triggers actual world regeneration and first-person mode
+  - Button provides real-time feedback during generation ("Generating...", "Entering World...")
+  - Button disabled during generation to prevent multiple clicks
+- **Improved World Generation Flow**:
+  - Async/await pattern for smooth non-blocking generation
+  - requestAnimationFrame used for progressive generation steps
+  - Separate game world container prevents menu world interference
+  - Larger game world (2x size) for more immersive gameplay
+  - Smooth transitions between generation and first-person mode entry
+  - Full-screen loading screen displays during world generation with real-time progress
+  - Progress callback system: `regenerateWorld(options, progressCallback)` accepts optional callback
+  - Progress updates at key stages: terrain (0-30%), structures (30-60%), trees (60-90%), completion (90-100%)
+  - World generation panel hides immediately when generation starts
+  - ALL UI elements automatically hidden during loading (title, menu, buttons, news reel)
+  - Loading screen blocks entire viewport with fully opaque background
+  - Error handling with proper loading screen cleanup and UI restoration
+- **Settings Panel**:
+  - Transformed from simple panel to modern tabbed interface
+  - Audio controls upgraded from simple toggles to draggable volume sliders
+  - Improved visual hierarchy and organization
+- **Camera System**: 
+  - Dual camera mode support (orbit for menu, first-person for game)
+  - Orbit controls disabled when entering first-person mode
+  - Auto-rotate disabled during first-person gameplay
 
 ### Fixed
 - **UI Interaction Bug**: Fixed issue where menu buttons (Play, Settings, About) remained clickable and showed hover effects when UI was hidden. Buttons now properly disabled with `pointer-events: none` and CSS `ui-hidden` class.

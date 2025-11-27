@@ -29,6 +29,7 @@
         }
         canvas {
             /* Canvas will be hidden by JavaScript after scene setup, but initially visible for rendering */
+            display: block;
         }
         #splash-content {
             opacity: 0;
@@ -44,6 +45,46 @@
             }
         }
     </script>
+    <script>
+        // Suppress expected Tone.js AudioContext warnings BEFORE Tone.js loads
+        // 
+        // NOTE: Some browser-level warnings may still appear in the console. These are EXPECTED and HARMLESS:
+        // - "AudioContext was not allowed to start" - Browser security requires user interaction to start audio
+        // - "ScriptProcessorNode is deprecated" - Internal Tone.js deprecation warning (harmless)
+        // 
+        // These warnings occur because browsers require user interaction to start audio, which is a security feature.
+        // We properly handle this by calling Tone.start() after user interaction (when entering first-person mode).
+        // The ambient wind sound will work correctly - these are just informational browser messages.
+        //
+        (function() {
+            const originalWarn = console.warn;
+            const originalError = console.error;
+            
+            // Filter AudioContext warnings
+            console.warn = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('AudioContext was not allowed to start') ||
+                    message.includes('must be resumed (or created) after a user gesture') ||
+                    message.includes('ScriptProcessorNode is deprecated')) {
+                    // Suppress expected warnings - we handle audio context properly after user interaction
+                    return;
+                }
+                originalWarn.apply(console, args);
+            };
+            
+            // Also filter errors that are actually just warnings
+            console.error = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('AudioContext was not allowed to start') ||
+                    message.includes('must be resumed (or created) after a user gesture')) {
+                    // Suppress expected errors that are actually warnings
+                    return;
+                }
+                originalError.apply(console, args);
+            };
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
     </head>
 
 <body>
@@ -72,7 +113,7 @@
 
         <div class="menu-container">
             <button class="menu-btn" id="play-btn">Play</button>
-            <button class="menu-btn">Settings</button>
+            <button class="menu-btn" id="settings-btn">Settings</button>
             <button class="menu-btn">About</button>
         </div>
 
@@ -86,28 +127,138 @@
                 <div class="world-gen-status">
                     <div class="status-item">
                         <span class="status-label">World Size:</span>
-                        <span class="status-value" id="world-size">75 blocks</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Trees:</span>
-                        <span class="status-value" id="tree-count">140</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Snow Particles:</span>
-                        <span class="status-value" id="snow-count">3000</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Leaves:</span>
-                        <span class="status-value" id="leaf-count">1200</span>
+                        <span class="status-value">64 x 64</span>
                     </div>
                 </div>
-                <div class="world-gen-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
+                <div class="world-gen-toggles">
+                    <div class="toggle-item">
+                        <span class="toggle-label">Trees</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-trees" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
-                    <div class="progress-text" id="progress-text">Ready to generate...</div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Christmas Lights</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-lights" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">House</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-house" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Hills</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-hills" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
-                <button id="generate-world-btn" class="generate-btn">Generate World</button>
+                <button id="generate-world-btn" class="generate-world-btn">Generate World</button>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="settings-panel-hidden">
+            <div class="settings-header">
+                <h2>⚙️ Settings</h2>
+                <button id="close-settings" class="close-btn">×</button>
+            </div>
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="audio">🎵 Audio</button>
+                <button class="settings-tab" data-tab="controls">⌨️ Controls</button>
+                <button class="settings-tab" data-tab="video">🎬 Video</button>
+            </div>
+            <div class="settings-content">
+                <!-- Audio Panel -->
+                <div class="settings-tab-content active" id="tab-audio">
+                    <div class="audio-controls">
+                        <!-- Master Audio Control -->
+                        <div class="audio-control-item">
+                            <div class="audio-control-header">
+                                <span class="audio-control-label">Master Audio</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-master-audio" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="volume-slider-container">
+                                <div class="volume-slider" id="master-volume-slider">
+                                    <div class="volume-slider-track">
+                                        <div class="volume-slider-fill" id="master-volume-fill"></div>
+                                        <div class="volume-slider-handle" id="master-volume-handle"></div>
+                                    </div>
+                                </div>
+                                <span class="volume-percentage" id="master-volume-percentage">100%</span>
+                            </div>
+                        </div>
+
+                        <!-- Background Music Control -->
+                        <div class="audio-control-item">
+                            <div class="audio-control-header">
+                                <span class="audio-control-label">Background Music</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-music" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="volume-slider-container">
+                                <div class="volume-slider" id="music-volume-slider">
+                                    <div class="volume-slider-track">
+                                        <div class="volume-slider-fill" id="music-volume-fill"></div>
+                                        <div class="volume-slider-handle" id="music-volume-handle"></div>
+                                    </div>
+                                </div>
+                                <span class="volume-percentage" id="music-volume-percentage">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Panel -->
+                <div class="settings-tab-content" id="tab-controls">
+                    <div class="keybind-list">
+                        <div class="keybind-item">
+                            <span class="keybind-label">Move Forward</span>
+                            <span class="keybind-key">W</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Move Backward</span>
+                            <span class="keybind-key">S</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Move Left</span>
+                            <span class="keybind-key">A</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Move Right</span>
+                            <span class="keybind-key">D</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Jump</span>
+                            <span class="keybind-key">Space</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Look Around</span>
+                            <span class="keybind-key">Mouse</span>
+                        </div>
+                        <div class="keybind-item">
+                            <span class="keybind-label">Show/Hide UI</span>
+                            <span class="keybind-key">Double Click</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Panel -->
+                <div class="settings-tab-content" id="tab-video">
+                    <!-- Video settings will be added here -->
+                </div>
             </div>
         </div>
 
@@ -174,6 +325,27 @@
     </div>
 
     <div id="loading">Generating World...</div>
+
+    <!-- World Loading Screen -->
+    <div id="world-loading-screen" class="world-loading-screen-hidden">
+        <div class="loading-content">
+            <div class="loading-header">
+                <h2>🌲 Generating World</h2>
+            </div>
+            <div class="loading-progress-container">
+                <div class="loading-progress-bar">
+                    <div class="loading-progress-fill" id="loading-progress-fill"></div>
+                </div>
+                <div class="loading-percentage" id="loading-percentage">0%</div>
+            </div>
+            <div class="loading-status" id="loading-status">Initializing world generation...</div>
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Background Music -->
     <audio id="bg-music" loop preload="auto">

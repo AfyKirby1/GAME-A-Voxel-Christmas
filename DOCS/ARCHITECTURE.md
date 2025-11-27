@@ -20,9 +20,28 @@ The application can be packaged as a Windows executable using WebView2:
 - Orchestrates the initialization sequence.
 - Manages the main animation loop (`animate`).
 - Integrates the Scene, World Generation, Particles, and UI.
+- **Dual World System**: 
+  - **Menu World**: Generated directly in scene for menu viewing (75 block radius)
+  - **Game World**: Generated in separate THREE.Group container for gameplay (150 block radius, 2x larger)
+  - Menu world remains intact when generating game world
+- **First-Person Mode**: Manages camera mode switching between orbit and first-person views.
+  - `enterFirstPersonMode(spawnY)`: Switches to first-person camera with PointerLockControls, stops main menu music, starts ambient wind sound
+  - `exitFirstPersonMode()`: Returns to orbit camera mode, stops ambient wind sound
+  - `regenerateWorld(options, progressCallback)`: Creates separate game world in dedicated container (async with progress callback)
+    - Accepts optional `progressCallback(percentage, statusText)` function for real-time progress updates
+    - Progress updates at key generation stages (terrain, structures, trees)
+    - Returns Promise that resolves with ground height for camera positioning
 
 ### 3. Configuration (`js/config.js`)
-- Centralized configuration object `SCENE_OPTS`.
+- **Menu World Config** (`SCENE_OPTS`): Configuration for menu/preview world
+  - World radius: 75 blocks
+  - Tree count: 140
+  - Snow particles: 3000
+- **Game World Config** (`GAME_WORLD_OPTS`): Configuration for gameplay world (2x larger)
+  - World radius: 150 blocks
+  - Tree count: 400
+  - Snow particles: 6000
+  - All dimensions scaled proportionally
 - Allows easy tuning of procedural generation parameters (radius, counts, colors).
 
 ### 4. Modules
@@ -31,7 +50,52 @@ The application can be packaged as a Windows executable using WebView2:
   - **Post-Processing**: Uses `EffectComposer` with `UnrealBloomPass` for bloom effects.
   - **Window Resize Observer**: Listens to `window.resize` event to update camera aspect ratio, renderer size, and composer size.
 - **`js/world-gen.js`**: Procedural generation logic for the terrain, house, and trees. Uses InstancedMesh for performance.
+  - **Conditional Generation**: Supports toggles for trees, lights, house, and hills
+  - **Container-Based Generation**: All functions accept container parameter (scene or THREE.Group) for flexible world placement
+  - **World Clearing**: `clearWorld(container)` function removes all generated objects from specified container
+  - **Ground Height Calculation**: `getGroundHeight(x, z, SCENE_OPTS, useGameHeight)` calculates terrain height at position (supports both menu and game world heights)
+  - **Dual World Support**: Functions support both menu world (PEAK_HEIGHT) and game world (GAME_PEAK_HEIGHT) height calculations
+- **`js/first-person-controls.js`**: First-person camera controller using PointerLockControls.
+  - Wraps Three.js PointerLockControls for mouse look
+  - Handles pointer lock/unlock events
+  - Manages camera rotation with pitch limits
+- **`js/loading-screen.js`**: Loading screen module for world generation progress display.
+  - `showLoadingScreen()`: Displays full-screen loading overlay with fade-in animation
+    - Automatically hides ALL UI elements (title screen, menu, buttons, news reel, panels)
+    - Full-screen overlay with fully opaque background (z-index: 9999)
+    - Completely blocks view of menu and game world during generation
+  - `hideLoadingScreen()`: Hides loading screen with fade-out animation
+  - `updateProgress(percentage, statusText)`: Updates progress bar, percentage, and status text
+    - Smooth animated progress bar with shimmer effect
+    - Real-time percentage display (0-100%)
+    - Dynamic status text updates
+  - Animated spinner with multiple rotating rings
+  - Real-time progress updates during world generation stages
 - **`js/particles.js`**: Manages `SnowSystem` and `LeafSystem`.
+- **`js/ambient-sound.js`**: Procedural ambient wind sound system using Tone.js.
+  - **Wind Sound Generation**: Uses Tone.js to create realistic wind sounds
+    - PinkNoise as base sound source (more natural than white noise)
+    - Low-pass filter (200-800 Hz) to shape wind character
+    - LFO (Low-Frequency Oscillator) at 0.2 Hz modulating filter frequency for natural wind gusts
+    - Gain node for volume control (base volume 35% for subtle ambience)
+  - **Audio Context Management**: Properly handles Web Audio API context initialization
+    - Requires user interaction to start (handled when entering first-person mode)
+    - Uses `Tone.start()` to resume audio context after user gesture
+  - **Volume Control**: Integrates with master audio settings
+    - Respects master audio toggle (stops when master audio disabled)
+    - Volume controlled by master volume slider (0-1 range)
+    - Smooth volume transitions using `rampTo()` for fade in/out
+  - **Lifecycle Management**: 
+    - `initAmbientSound()`: Initializes audio chain (noise → filter → gain → destination)
+    - `startAmbientSound()`: Starts wind sound (async, handles Tone.start())
+    - `stopAmbientSound()`: Stops wind sound and cleans up
+    - `setAmbientVolume(volume)`: Controls volume (0-1)
+    - `isAmbientPlaying()`: Checks if sound is active
+    - `disposeAmbientSound()`: Cleanup function for resource disposal
+  - **Integration**: 
+    - Starts automatically when entering first-person mode (after world generation)
+    - Stops automatically when exiting first-person mode
+    - Volume updates in real-time when master audio settings change
 - **`js/ui.js`**: Handles DOM event listeners and UI controls.
   - **News Reel Snowflakes**: Dynamic JavaScript system that spawns snowflakes at random positions with falling animations.
   - **UI State Management**: Shared module-level state (`uiVisible`) and functions (`hideUI()`, `showUI()`) for unified UI visibility control.
@@ -44,7 +108,20 @@ The application can be packaged as a Windows executable using WebView2:
   - **Tech Panel Observer**: Listens to `#tech-toggle-btn` clicks to toggle tech info panel visibility.
   - **World Gen Panel Observer**: Listens to `#play-btn` clicks to show world generation panel.
   - **Close Panel Observer**: Listens to `#close-world-gen` clicks to hide world generation panel.
-  - **Generate Button Observer**: Listens to `#generate-world-btn` clicks to simulate world generation progress.
+  - **Generate World Button**: Listens to `#generate-world-btn` clicks to:
+    - Read toggle states (trees, lights, house, hills)
+    - Hide world generation panel immediately
+    - Show full-screen loading screen (blocks all UI elements)
+    - Regenerate world with progress callback for real-time updates
+      - Progress updates: 0-30% terrain, 30-60% structures, 60-90% trees, 90-100% finalizing
+    - Display "Entering World..." message at 100% completion
+    - Hide loading screen after brief delay
+    - Enter first-person mode
+    - Hide all UI elements including game buttons
+    - Error handling with loading screen cleanup and UI restoration
+  - **Settings Panel Observer**: Listens to `#settings-btn` clicks to show settings panel.
+  - **Close Settings Observer**: Listens to `#close-settings` clicks to hide settings panel.
+  - **Game UI Button Hiding**: `hideGameUIButtons()` function hides tech, quit, fullscreen, and show UI buttons when entering first-person mode.
 
 ## Event Observers & Connections
 
@@ -135,39 +212,69 @@ The application can be packaged as a Windows executable using WebView2:
      - Adds `world-gen-panel-hidden` class
    - **Connection**: Closes world generation UI flow
 
-9. **Generate World Button** (`js/ui.js:75-111`)
+9. **Generate World Button** (`js/ui.js:474-547`)
    - **Element**: `#generate-world-btn`
    - **Event**: `click`
    - **Actions**:
-     - Resets progress bar to 0%
-     - Updates progress text through stages:
-       - "Generating terrain..." (0-30%)
-       - "Placing trees..." (30-60%)
-       - "Adding particles..." (60-90%)
-       - "Finalizing..." (90-100%)
-       - "World generated!" (100%)
-     - Disables button and changes text to "World Ready"
-     - Auto-closes panel after 1 second
-   - **Connection**: Simulates world generation process with visual feedback
+     - Disables button and shows "Generating..." feedback
+     - Reads toggle states (trees, lights, house, hills)
+     - Hides world generation panel immediately
+     - Shows full-screen loading screen (hides ALL UI elements)
+     - Calls `regenerateWorld(options, progressCallback)` (async) with progress callback
+     - Updates loading screen with real-time progress (0-100%)
+     - Displays status messages: "Generating terrain...", "Building structures...", "Placing trees...", "Entering world..."
+     - Hides loading screen after completion
+     - Calls `enterFirstPersonMode(groundHeight)` to switch camera mode (stops main menu music)
+     - Hides all UI elements including game buttons
+     - Error handling restores UI if generation fails
+   - **Connection**: Triggers separate game world generation (does not affect menu world) with full-screen loading screen. Main menu music stops automatically when entering game mode.
+
+10. **Settings Button** (`js/ui.js:43-70`)
+    - **Element**: `#settings-btn`
+    - **Event**: `click`
+    - **Actions**:
+      - Disables countdown timer
+      - Shows settings panel
+      - Removes `settings-panel-hidden` class
+      - Adds `settings-panel-visible` class
+    - **Connection**: Opens settings panel for future configuration options
+
+11. **Close Settings Button** (`js/ui.js:67-70`)
+    - **Element**: `#close-settings`
+    - **Event**: `click`
+    - **Actions**:
+      - Hides settings panel
+      - Removes `settings-panel-visible` class
+      - Adds `settings-panel-hidden` class
+    - **Connection**: Closes settings panel
 
 ### Data Flow Connections
 
-1. **Config → UI** (`js/ui.js:45-55`)
-   - Dynamically imports `SCENE_OPTS` from `config.js`
-   - Populates world generation panel with current configuration values:
-     - World size (radius)
-     - Tree count
-     - Snow particle count
-     - Leaf count
-   - **Connection**: One-way data flow from config to UI display
+1. **Config → World Generation** (`js/world-gen.js`)
+   - Uses `SCENE_OPTS` from `config.js` for world generation parameters
+   - World size, tree count, and terrain features based on config
+   - **Connection**: Configuration drives procedural generation
+
+2. **UI Toggles → Loading Screen → Game World Generation** (`js/ui.js:474-547`)
+   - Toggle states (trees, lights, house, hills) read from panel
+   - World generation panel hidden immediately
+   - Loading screen shown (full-screen overlay, hides ALL UI)
+   - Toggle states passed to `regenerateWorld(options, progressCallback)`
+   - Progress callback updates loading screen in real-time (percentage, status text)
+   - Separate game world generated in dedicated container (does not affect menu world)
+   - Loading screen displays progress: 0-30% terrain, 30-60% structures, 60-90% trees, 90-100% finalizing
+   - Loading screen hidden after completion, first-person mode entered
+   - Larger world (2x size) generated for gameplay
+   - **Connection**: User preferences → Loading screen → World generation → Game mode
 
 2. **Main Loop → Particle Manager** (`js/main.js:45-47`)
    - Animation loop calls `particleManager.update()` every frame
    - **Connection**: Continuous update cycle for particle systems
 
-3. **Main Loop → Controls** (`js/main.js:43`)
-   - Animation loop calls `controls.update()` every frame
-   - **Connection**: Continuous camera control updates (damping, auto-rotate)
+3. **Main Loop → Controls** (`js/main.js:71-79`)
+   - Animation loop calls `orbitControls.update()` in menu mode
+   - First-person mode uses PointerLockControls (no update needed)
+   - **Connection**: Continuous camera control updates based on active mode
 
 4. **Main Loop → Composer** (`js/main.js:50`)
    - Animation loop calls `composer.render()` every frame
@@ -219,6 +326,26 @@ The UI system uses a unified state management approach for consistent behavior a
    - If hidden, calls `showUI()` function
    - Restores all UI elements including news reel, audio warning, and button positions
    - Works identically for both manual hide and auto-hide scenarios
+
+4. **First-Person Game Mode** (via Generate World):
+   - User clicks "Generate World" button
+   - World generation panel hides immediately
+   - **Full-screen loading screen appears** (z-index: 9999, fully opaque)
+   - Loading screen automatically hides ALL UI elements:
+     - Title screen and menu
+     - World generation panel
+     - All UI buttons (Hide UI, Fullscreen, Tech, Quit)
+     - News reel and audio warning
+     - Countdown timer
+   - World regenerated with real-time progress updates on loading screen
+   - Loading screen shows progress bar (0-100%) and status messages
+   - After completion, loading screen shows "Entering world..." message
+   - Loading screen hides after brief delay
+   - Switches to first-person camera mode
+   - Main menu background music stops and resets
+   - Ambient wind sound starts automatically (if master audio enabled)
+   - Pointer lock activated for mouse look
+   - Immersive game experience with ambient wind sounds, no UI distractions, and no menu music
 
 ### Element Restoration
 When `showUI()` is called, it ensures complete restoration:
