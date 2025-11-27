@@ -499,18 +499,16 @@ export function setupWorldGenPanel() {
                 // Small delay to show the final message
                 await new Promise(resolve => setTimeout(resolve, 800));
                 
-                // Hide loading screen
-                hideLoadingScreen();
-                
-                // Small delay for smooth transition
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                // Enter first-person mode
+                // Enter first-person mode (switch view)
                 enterFirstPersonMode(groundHeight);
                 
-                // Ensure all UI is hidden (loading screen already did this, but double-check)
+                // Ensure all UI is hidden state
                 hideUI();
                 hideGameUIButtons();
+                
+                // Hide loading screen (reveal game world)
+                const { hideLoadingScreen } = await import('./loading-screen.js');
+                hideLoadingScreen();
                 
                 console.log('World generated and first-person mode activated');
             } catch (error) {
@@ -873,6 +871,8 @@ function showUI() {
     
     if (title) {
         title.style.opacity = '1';
+        title.style.visibility = 'visible';
+        title.style.display = ''; // Clear any inline display: none
         title.style.pointerEvents = 'auto';
         title.classList.remove('ui-hidden');
         // Reset transition to CSS default (remove inline override from countdown timer)
@@ -883,6 +883,8 @@ function showUI() {
     // Ensure audio warning is visible and properly positioned
     if (audioWarning) {
         audioWarning.style.opacity = '';
+        audioWarning.style.visibility = '';
+        audioWarning.style.display = '';
         audioWarning.style.pointerEvents = '';
         audioWarning.classList.remove('ui-hidden');
     }
@@ -890,11 +892,17 @@ function showUI() {
     // Enable menu buttons
     if (menuContainer) {
         menuContainer.style.pointerEvents = 'auto';
+        menuContainer.style.display = ''; // Clear any inline display: none
+        menuContainer.style.visibility = '';
+        menuContainer.style.opacity = '';
         menuContainer.classList.remove('ui-hidden');
     }
     menuButtons.forEach(btn => {
         btn.classList.remove('ui-hidden');
         btn.style.pointerEvents = 'auto';
+        btn.style.display = ''; // Clear any inline display: none
+        btn.style.visibility = '';
+        btn.style.opacity = '';
         // Restore cursor for play and settings buttons
         if (btn.id === 'play-btn' || btn.id === 'settings-btn') {
             btn.style.cursor = 'pointer';

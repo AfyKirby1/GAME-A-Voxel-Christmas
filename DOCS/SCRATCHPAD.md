@@ -1,5 +1,19 @@
 # Scratchpad
 
+## 2025-01-XX: Volume Slider Bug Fix
+
+### Issue
+- Volume slider handle would jump to position 0 when grabbing/dragging
+- Caused by delayed position update - code waited for first mousemove event
+
+### Solution
+- Updated `startDrag()` function to immediately call `updateFromEvent()` on mousedown
+- Prevents incorrect position calculation on first mouse movement
+- Handle now stays at current position when grabbed, allowing smooth dragging
+
+### Files Modified
+- `js/ui.js` - Fixed `startDrag()` function in `setupVolumeSlider()`
+
 ## 2025-11-25: WebGL-Only Implementation
 
 ### Decision

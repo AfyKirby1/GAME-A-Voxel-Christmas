@@ -14,62 +14,91 @@ export function showLoadingScreen() {
         return;
     }
     
-    // Hide ALL UI elements immediately
+    // Hide ALL UI elements immediately with !important to override everything
     const titleScreen = document.getElementById('title-screen');
+    const menuContainer = document.querySelector('.menu-container');
+    const menuButtons = document.querySelectorAll('.menu-btn');
     const newsReel = document.getElementById('news-reel');
     const audioWarning = document.querySelector('.audio-warning');
     const uiButtons = document.querySelectorAll('.ui-btn, .tech-toggle-btn');
     const panels = document.querySelectorAll('#world-gen-panel, #settings-panel, #tech-info-panel');
     const countdownTimer = document.getElementById('countdown-timer');
+    const techPanel = document.getElementById('tech-info-panel');
     
-    // Hide title screen
+    // Hide title screen COMPLETELY
     if (titleScreen) {
-        titleScreen.style.opacity = '0';
-        titleScreen.style.visibility = 'hidden';
-        titleScreen.style.pointerEvents = 'none';
-        titleScreen.style.display = 'none';
+        titleScreen.style.setProperty('display', 'none', 'important');
+        titleScreen.style.setProperty('opacity', '0', 'important');
+        titleScreen.style.setProperty('visibility', 'hidden', 'important');
+        titleScreen.style.setProperty('pointer-events', 'none', 'important');
     }
     
-    // Hide news reel
+    // Hide menu container COMPLETELY
+    if (menuContainer) {
+        menuContainer.style.setProperty('display', 'none', 'important');
+        menuContainer.style.setProperty('opacity', '0', 'important');
+        menuContainer.style.setProperty('visibility', 'hidden', 'important');
+        menuContainer.style.setProperty('pointer-events', 'none', 'important');
+    }
+    
+    // Hide all menu buttons COMPLETELY
+    menuButtons.forEach(btn => {
+        if (btn) {
+            btn.style.setProperty('display', 'none', 'important');
+            btn.style.setProperty('opacity', '0', 'important');
+            btn.style.setProperty('visibility', 'hidden', 'important');
+            btn.style.setProperty('pointer-events', 'none', 'important');
+        }
+    });
+    
+    // Hide news reel COMPLETELY
     if (newsReel) {
-        newsReel.style.opacity = '0';
-        newsReel.style.visibility = 'hidden';
-        newsReel.style.pointerEvents = 'none';
-        newsReel.style.display = 'none';
+        newsReel.style.setProperty('display', 'none', 'important');
+        newsReel.style.setProperty('opacity', '0', 'important');
+        newsReel.style.setProperty('visibility', 'hidden', 'important');
+        newsReel.style.setProperty('pointer-events', 'none', 'important');
     }
     
-    // Hide audio warning
+    // Hide audio warning COMPLETELY
     if (audioWarning) {
-        audioWarning.style.opacity = '0';
-        audioWarning.style.visibility = 'hidden';
-        audioWarning.style.pointerEvents = 'none';
-        audioWarning.style.display = 'none';
+        audioWarning.style.setProperty('display', 'none', 'important');
+        audioWarning.style.setProperty('opacity', '0', 'important');
+        audioWarning.style.setProperty('visibility', 'hidden', 'important');
+        audioWarning.style.setProperty('pointer-events', 'none', 'important');
     }
     
-    // Hide all UI buttons
+    // Hide all UI buttons COMPLETELY
     uiButtons.forEach(btn => {
         if (btn) {
-            btn.style.opacity = '0';
-            btn.style.visibility = 'hidden';
-            btn.style.pointerEvents = 'none';
-            btn.style.display = 'none';
+            btn.style.setProperty('display', 'none', 'important');
+            btn.style.setProperty('opacity', '0', 'important');
+            btn.style.setProperty('visibility', 'hidden', 'important');
+            btn.style.setProperty('pointer-events', 'none', 'important');
         }
     });
     
-    // Hide all panels
+    // Hide all panels COMPLETELY
     panels.forEach(panel => {
         if (panel) {
-            panel.style.opacity = '0';
-            panel.style.visibility = 'hidden';
-            panel.style.pointerEvents = 'none';
-            panel.style.display = 'none';
+            panel.style.setProperty('display', 'none', 'important');
+            panel.style.setProperty('opacity', '0', 'important');
+            panel.style.setProperty('visibility', 'hidden', 'important');
+            panel.style.setProperty('pointer-events', 'none', 'important');
         }
     });
     
-    // Hide countdown timer
+    // Hide tech panel COMPLETELY
+    if (techPanel) {
+        techPanel.style.setProperty('display', 'none', 'important');
+        techPanel.style.setProperty('opacity', '0', 'important');
+        techPanel.style.setProperty('visibility', 'hidden', 'important');
+        techPanel.style.setProperty('pointer-events', 'none', 'important');
+    }
+    
+    // Hide countdown timer COMPLETELY
     if (countdownTimer) {
-        countdownTimer.style.display = 'none';
-        countdownTimer.style.visibility = 'hidden';
+        countdownTimer.style.setProperty('display', 'none', 'important');
+        countdownTimer.style.setProperty('visibility', 'hidden', 'important');
     }
     
     // Reset progress
@@ -77,13 +106,14 @@ export function showLoadingScreen() {
     targetProgress = 0;
     updateProgress(0, 'Initializing world generation...');
     
-    // Show loading screen
+    // Show loading screen - set display first, then trigger transition
+    // Base styles are now in #world-loading-screen, so we just toggle classes
     loadingScreen.classList.remove('world-loading-screen-hidden');
     loadingScreen.classList.add('world-loading-screen-visible');
 }
 
 /**
- * Hide the loading screen with fade-out animation
+ * Hide the loading screen immediately and completely
  */
 export function hideLoadingScreen() {
     const loadingScreen = document.getElementById('world-loading-screen');
@@ -97,12 +127,25 @@ export function hideLoadingScreen() {
         progressInterval = null;
     }
     
-    // Hide loading screen
+    // Start fade out transition
+    // Ensure display stays flex so it doesn't pop off immediately
+    // The class change triggers the opacity fade defined in CSS
+    loadingScreen.style.display = 'flex';
+    
     loadingScreen.classList.remove('world-loading-screen-visible');
     loadingScreen.classList.add('world-loading-screen-hidden');
     
-    // Reset after transition
+    // After transition completes (0.5s), hide completely
     setTimeout(() => {
+        loadingScreen.style.display = 'none';
+        
+        // Clean up any other inline styles
+        loadingScreen.style.removeProperty('visibility');
+        loadingScreen.style.removeProperty('opacity');
+        loadingScreen.style.removeProperty('pointer-events');
+        loadingScreen.style.removeProperty('z-index');
+        
+        // Reset progress
         currentProgress = 0;
         targetProgress = 0;
     }, 500);

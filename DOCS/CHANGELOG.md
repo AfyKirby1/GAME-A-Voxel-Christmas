@@ -145,6 +145,7 @@
   - Auto-rotate disabled during first-person gameplay
 
 ### Fixed
+- **Volume Slider Jump Bug**: Fixed issue where grabbing the volume slider handle would cause the white circle (handle) to jump to position 0. The slider now updates position immediately on mousedown instead of waiting for the first mousemove event, preventing incorrect position calculations.
 - **UI Interaction Bug**: Fixed issue where menu buttons (Play, Settings, About) remained clickable and showed hover effects when UI was hidden. Buttons now properly disabled with `pointer-events: none` and CSS `ui-hidden` class.
 - **News Reel Missing**: Fixed bug where news reel would disappear after double-clicking to wake UI. News reel now properly restored with display, opacity, and pointer-events.
 - **Audio Warning Position**: Fixed issue where audio warning box would move incorrectly after UI restoration. Audio warning now maintains proper positioning during hide/show cycles.

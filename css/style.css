@@ -138,7 +138,7 @@ body {
 }
 
 /* World Loading Screen */
-.world-loading-screen-hidden {
+#world-loading-screen {
     position: fixed;
     top: 0;
     left: 0;
@@ -146,17 +146,22 @@ body {
     height: 100%;
     background: linear-gradient(135deg, rgba(5, 5, 16, 1) 0%, rgba(20, 30, 50, 1) 100%);
     backdrop-filter: blur(15px);
-    display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
     transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
+.world-loading-screen-hidden {
+    display: none;
+    z-index: -1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .world-loading-screen-visible {
+    display: flex;
+    z-index: 9999;
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
