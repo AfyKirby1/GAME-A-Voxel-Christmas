@@ -3,6 +3,39 @@
 ## [Unreleased]
 
 ### Added
+- **Crosshair System**:
+  - Centered crosshair displayed in first-person mode
+  - Simple white crosshair with horizontal and vertical lines
+  - Automatically shows when entering first-person mode
+  - Automatically hides when exiting first-person mode
+  - Non-interactive (pointer-events: none) so it doesn't interfere with gameplay
+  - Smooth fade transitions for visibility changes
+- **Block Highlighting System**:
+  - Real-time block highlighting using raycasting
+  - White wireframe outline appears around blocks you're aiming at
+  - Maximum highlight distance of 5 units
+  - Works with both regular meshes and instanced meshes
+  - Updates continuously as you look around
+  - Only active in first-person mode
+  - Highlight automatically hides when paused or exiting first-person mode
+- **Pause Menu System**:
+  - Pause functionality accessible via Escape key (only in first-person mode)
+  - Full-screen pause menu with backdrop blur
+  - Three main options:
+    - **Resume**: Unpauses and continues gameplay
+    - **Settings**: Opens settings panel (pause menu stays behind)
+    - **Quit to Menu**: Exits first-person mode and returns to title screen
+  - Movement and controls disabled when paused
+  - Pointer automatically unlocks when paused for menu interaction
+  - Pointer re-locks when resuming (requires user click for gesture context)
+  - UI sound effects for all pause menu buttons
+  - Proper z-index layering (pause menu below settings panel)
+- **Pointer Lock Improvements**:
+  - Better handling of pointer lock API requirements (user gesture context)
+  - Automatic click handler setup for requesting pointer lock after world generation
+  - Graceful fallback when pointer lock isn't immediately available
+  - Proper cleanup of event listeners when exiting first-person mode
+  - Fixed error handling for cases where lock() doesn't return a Promise
 - **UI Sound Effects System**:
   - Hover sounds for menu buttons (900 Hz sine wave, 0.1s duration, subtle volume)
   - Click sounds for menu buttons and splash screen (500 Hz sine wave, 0.15s duration)
@@ -220,6 +253,16 @@
   - Auto-rotate disabled during first-person gameplay
 
 ### Fixed
+- **Escape Key Pause Behavior**: Fixed awkward two-press behavior where first escape only unlocked pointer and second press showed pause menu. Now pauses immediately on first escape press - unlocks pointer and shows pause menu in one action. Added auto-pause on pointer unlock to handle browser default escape behavior gracefully. Added race condition protection with `isHandlingPause` flag to prevent double-handling.
+- **Quit to Menu Button**: Fixed critical bug where quit to menu button didn't properly clean up game session. Now properly resets camera to menu view position, resets orbit controls with auto-rotate, hides game world container, closes all panels (settings, gallery, tech, world-gen), clears all `!important` inline styles from loading screen, and restores all UI elements correctly.
+- **UI Restoration on Menu Return**: Fixed incomplete UI restoration when returning to main menu. Now properly clears loading screen `!important` styles, resets countdown timer element, closes all panels, ensures canvas visibility, and uses centralized `showUI()` function for complete restoration.
+- **Countdown Timer Restart**: Fixed countdown timer not restarting when returning to main menu. Timer now properly resets (removes warning/critical classes, resets text to '5', makes visible) and restarts automatically after UI restoration completes.
+- **Audio Volume NaN Error**: Fixed issue where music volume could become NaN when slider initializes, causing "Failed to set the 'volume' property" errors. Added proper validation to check for NaN and non-finite values before applying volume settings.
+- **Pointer Lock API Error**: Fixed "Cannot read properties of undefined (reading 'catch')" error when requesting pointer lock. Added proper Promise checking before calling `.catch()` method, as `lock()` doesn't always return a Promise.
+- **Pointer Lock User Gesture**: Improved pointer lock handling to work correctly with browser security requirements. Pointer lock now properly requests on user click after world generation completes, with graceful fallback handling.
+- **Volume Slider Zero Value Bug**: Fixed critical bug where volume sliders at 0% would cause music to play at 100% volume. The `applyAudioSettings()` function was using `|| 1.0` which treated `0` as falsy and defaulted to `1.0`. Changed to nullish coalescing (`?? 1.0`) to properly preserve `0` as a valid value. Music now correctly respects 0% volume settings.
+- **Bloom Toggle Zero Intensity Bug**: Fixed critical bug where bloom toggle at 0% intensity would turn bloom back on when toggled. All bloom intensity parsing was using `|| 0` which could cause issues with falsy value handling. Updated all 5 occurrences to explicitly check for `null`/`undefined`/`NaN` and properly preserve `0` as a valid intensity value. Bloom toggle now correctly respects 0% intensity settings.
+- **Preset Dropdown Text Update Bug**: Fixed critical issue where the performance preset dropdown text would not update when changing presets (Low, Mid, High, Custom). The `updateBloomSliderValue()` function was automatically setting the preset to 'custom' when updating the bloom intensity slider, even during preset application. Added `skipPresetUpdate` parameter to prevent preset changes during preset application, and explicitly set the preset value after all updates complete to ensure the dropdown text correctly reflects the selected preset.
 - **Loading Screen Overlay Bug**: Fixed critical issue where the loading screen was not properly hiding the main menu during world generation. The loading screen now completely covers the entire screen with a fully opaque background (z-index: 9999) and uses `!important` styles to ensure all UI elements (title screen, menu, buttons, news reel) are completely hidden during generation.
 - **Loading Screen Transition Glitch**: Fixed issue where the main menu would briefly appear after world generation completed, before entering first-person mode. The flow now correctly enters first-person mode *before* hiding the loading screen, ensuring a seamless transition from loading directly to gameplay without showing the menu world.
 - **Loading Screen CSS Structure**: Refactored loading screen CSS to use base styles on `#world-loading-screen` ID instead of class-only styles, ensuring the loading screen maintains proper positioning, size, and background regardless of visibility state. This prevents the "halved" appearance bug.

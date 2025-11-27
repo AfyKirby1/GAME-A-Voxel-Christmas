@@ -9,9 +9,12 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
 - **Block Borders**: All voxel blocks have visible edge lines (Minecraft-style borders) for authentic appearance
 - **Block Registry**: Comprehensive block tracking system for future destructibility functionality
 - **First-Person Mode**: Full first-person camera with mouse look controls and WASD movement
+- **Crosshair**: Centered crosshair displayed in first-person mode for aiming reference
+- **Block Highlighting**: Real-time block highlighting using raycasting - white wireframe outline shows which block you're aiming at
+- **Pause Menu**: Full pause system with Escape key, featuring Resume, Settings, and Quit to Menu options
 - **WASD Movement**: Smooth first-person movement with configurable keybinds, ground collision, and jump mechanics
 - **Configurable Keybinds**: Fully customizable keybinds with interactive UI, localStorage persistence, and visual feedback
-- **Video Settings**: Graphics options including antialiasing, bloom effect, and fog toggles with intensity controls
+- **Video Settings**: Graphics options including antialiasing, bloom effect, and fog toggles with intensity controls. Performance presets (Low, Mid, High, Custom) with proper dropdown text updates.
 - **Ambient Sound**: Procedural wind ambient sound using Tone.js (starts automatically in first-person mode)
 - **Particle Systems**: Snow and falling leaves
 - **Post-Processing**: Bloom effect for a magical look
@@ -62,6 +65,9 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - **WASD Movement**: Smooth first-person movement (W/A/S/D for forward/left/backward/right)
   - **Jump**: Space bar for jumping with gravity physics
   - **Mouse Look**: Mouse movement for camera rotation (PointerLockControls)
+  - **Pause**: Escape key to pause/unpause game (first-person mode only)
+  - **Crosshair**: Centered crosshair for aiming reference
+  - **Block Highlighting**: Real-time visual feedback showing which block you're aiming at
   - **Configurable Keybinds**: Settings → Controls tab with click-to-change keybind functionality
   - **Visual Feedback**: Pulsing orange glow effect when changing keybinds
   - **Keybind Persistence**: All keybinds saved to localStorage automatically
@@ -99,4 +105,4 @@ See [PACKAGING.md](../PACKAGING.md) for detailed instructions.
 
 ## Status
 - **Current Version**: 0.0.1 ALPHA
-- **Last Update**: Block borders system with visible edge lines on all voxel blocks (Minecraft-style). Block registry system for tracking all blocks in the world (prepared for future destructibility). Video settings panel with antialiasing, bloom effect, and fog toggles plus bloom intensity slider. Edge line rendering optimized to prevent z-fighting and flickering. Menu world snow edges disabled to prevent visual artifacts. Gallery system added with tabbed interface for viewing Entities, Blocks, Structures, and Plants. WASD movement system with configurable keybinds, ground collision, and jump mechanics. Interactive keybind UI in Settings → Controls with click-to-change functionality. Full-screen world loading screen with animated progress bar and real-time status updates. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable sliders and real-time settings application. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.
+- **Last Update**: Fixed escape key pause behavior - now pauses immediately on first press instead of requiring two presses. Fixed quit to menu button - properly cleans up game session, resets camera/controls, hides game world, closes panels, and restores UI correctly. Fixed UI restoration - properly clears loading screen styles, ensures canvas visibility, and uses centralized restoration function. Fixed countdown timer - automatically restarts when returning to main menu. Crosshair system for first-person aiming. Block highlighting system with real-time raycasting to show which block you're aiming at. Pause menu system with Escape key, featuring Resume, Settings, and Quit to Menu options. Improved pointer lock handling with proper user gesture context and error handling. Fixed audio volume NaN errors with proper validation. Block borders system with visible edge lines on all voxel blocks (Minecraft-style). Block registry system for tracking all blocks in the world (prepared for future destructibility). Video settings panel with antialiasing, bloom effect, and fog toggles plus bloom intensity slider. Edge line rendering optimized to prevent z-fighting and flickering. Menu world snow edges disabled to prevent visual artifacts. Gallery system added with tabbed interface for viewing Entities, Blocks, Structures, and Plants. WASD movement system with configurable keybinds, ground collision, and jump mechanics. Interactive keybind UI in Settings → Controls with click-to-change functionality. Full-screen world loading screen with animated progress bar and real-time status updates. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable sliders and real-time settings application. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.

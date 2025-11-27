@@ -451,6 +451,24 @@
 
     <div id="countdown-timer" class="countdown-timer">5</div>
 
+    <!-- Crosshair -->
+    <div id="crosshair" class="crosshair-hidden">
+        <div class="crosshair-line crosshair-horizontal"></div>
+        <div class="crosshair-line crosshair-vertical"></div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="pause-menu-hidden">
+        <div class="pause-menu-content">
+            <h2>⏸️ Game Paused</h2>
+            <div class="pause-menu-buttons">
+                <button id="pause-resume-btn" class="pause-menu-btn">▶ Resume</button>
+                <button id="pause-settings-btn" class="pause-menu-btn">⚙️ Settings</button>
+                <button id="pause-quit-btn" class="pause-menu-btn">🚪 Quit to Menu</button>
+            </div>
+        </div>
+    </div>
+
     <button id="ui-toggle" class="ui-btn">Hide UI</button>
     <button id="fullscreen-btn" class="ui-btn">⛶ Fullscreen</button>
     <button id="quit-btn" class="ui-btn">✕ Quit</button>
@@ -525,7 +543,7 @@
     </div>
 
     <!-- Background Music -->
-    <audio id="bg-music" loop preload="auto">
+    <audio id="bg-music" loop>
         <source src="assets/audio/Frozen Whispers.mp3" type="audio/mpeg">
     </audio>
 

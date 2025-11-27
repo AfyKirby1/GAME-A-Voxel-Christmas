@@ -28,6 +28,9 @@ async function getKeybindModule() {
     return keybindModule;
 }
 
+// Minimum volume threshold to consider audio as "playing" (avoids floating point precision issues)
+const MIN_AUDIO_VOLUME = 0.001;
+
 export function setupTechInfoPanel() {
     const toggleBtn = document.getElementById('tech-toggle-btn');
     const panel = document.getElementById('tech-info-panel');
@@ -218,8 +221,11 @@ function setupAudioPanel() {
     // Initialize audio state from localStorage or defaults
     const masterAudioEnabled = localStorage.getItem('masterAudioEnabled') !== 'false';
     const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
-    const masterVolume = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
-    const musicVolume = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+    // CRITICAL: Check for null/undefined, not falsy (0 is valid!)
+    const masterVolumeStr = localStorage.getItem('masterVolume');
+    const masterVolume = masterVolumeStr !== null ? parseFloat(masterVolumeStr) : 1.0;
+    const musicVolumeStr = localStorage.getItem('musicVolume');
+    const musicVolume = musicVolumeStr !== null ? parseFloat(musicVolumeStr) : 1.0;
 
     masterAudioToggle.checked = masterAudioEnabled;
     musicToggle.checked = musicEnabled;
@@ -238,8 +244,11 @@ function setupAudioPanel() {
     masterAudioToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('masterAudioEnabled', enabled);
-        const masterVol = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
-        const musicVol = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+        // CRITICAL: Check for null/undefined, not falsy (0 is valid!)
+        const masterVolStr = localStorage.getItem('masterVolume');
+        const masterVol = masterVolStr !== null ? parseFloat(masterVolStr) : 1.0;
+        const musicVolStr = localStorage.getItem('musicVolume');
+        const musicVol = musicVolStr !== null ? parseFloat(musicVolStr) : 1.0;
         applyAudioSettings(enabled, musicToggle.checked, masterVol, musicVol);
         updateSliderStates();
         console.log('Master Audio:', enabled ? 'ON' : 'OFF');
@@ -249,8 +258,11 @@ function setupAudioPanel() {
     musicToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('musicEnabled', enabled);
-        const masterVol = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
-        const musicVol = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+        // CRITICAL: Check for null/undefined, not falsy (0 is valid!)
+        const masterVolStr = localStorage.getItem('masterVolume');
+        const masterVol = masterVolStr !== null ? parseFloat(masterVolStr) : 1.0;
+        const musicVolStr = localStorage.getItem('musicVolume');
+        const musicVol = musicVolStr !== null ? parseFloat(musicVolStr) : 1.0;
         applyAudioSettings(masterAudioToggle.checked, enabled, masterVol, musicVol);
         updateSliderStates();
         console.log('Background Music:', enabled ? 'ON' : 'OFF');
@@ -301,8 +313,22 @@ function setupVolumeSlider(type, initialValue) {
     // Simple function to calculate percentage from mouse/touch position
     const getPercentageFromEvent = (clientX) => {
         const rect = track.getBoundingClientRect();
+        const handleWidth = 18; // Handle is 18px wide, centered
+        const handleHalfWidth = handleWidth / 2;
+        
+        // Calculate position relative to track, accounting for handle width
         const x = clientX - rect.left;
-        return Math.max(0, Math.min(1, x / rect.width));
+        // Adjust for handle width: when handle is at left edge, its center is at handleHalfWidth
+        // So we need to map the click position to account for this
+        const adjustedX = Math.max(0, Math.min(rect.width, x));
+        const rawPercent = adjustedX / rect.width;
+        
+        // Round to 3 decimal places
+        const rounded = Math.round(rawPercent * 1000) / 1000;
+        
+        // CRITICAL: If clicking in the first 5% of the track (accounting for handle width), treat as 0
+        // This ensures clicking at the very left edge sets volume to 0
+        return rounded <= 0.05 ? 0 : rounded;
     };
 
     // Update slider value from event
@@ -402,7 +428,15 @@ function updateSliderValue(type, value, isDragging = false) {
 
     if (!fill || !handle || !percentage) return;
 
-    const clampedValue = Math.max(0, Math.min(1, value));
+    let clampedValue = Math.max(0, Math.min(1, value));
+    // Round to 3 decimal places to avoid floating point precision issues
+    clampedValue = Math.round(clampedValue * 1000) / 1000;
+    // CRITICAL: Must match getPercentageFromEvent threshold (0.05 = 5%)
+    // If value is less than or equal to 5% (0.05), treat as exactly 0
+    // This ensures dragging to the left edge always results in 0
+    if (clampedValue <= 0.05) {
+        clampedValue = 0;
+    }
     const percentageValue = Math.round(clampedValue * 100);
     const percentageString = `${clampedValue * 100}%`;
 
@@ -420,11 +454,76 @@ function updateSliderValue(type, value, isDragging = false) {
 
     // Apply to audio (throttle during dragging, but update more frequently for smooth audio)
     if (!isDragging || !sliderThrottle.lastAudioUpdate[type] || now - sliderThrottle.lastAudioUpdate[type] > 16) {
+        // CRITICAL: Get CURRENT values from DOM, not localStorage (which may be stale due to throttling)
+        // Read the actual slider handle position to get the real current value
+        let masterVol, musicVol;
+        
+        if (type === 'master') {
+            masterVol = clampedValue;
+            // Get music volume from its slider's current position in DOM
+            const musicHandle = document.getElementById('music-volume-handle');
+            let musicVolPercent = 1.0; // Default value
+            
+            if (musicHandle && musicHandle.style.left) {
+                const parsed = parseFloat(musicHandle.style.left);
+                if (!isNaN(parsed)) {
+                    musicVolPercent = parsed / 100;
+                }
+            } else {
+                // Fallback to localStorage
+                const musicVolStr = localStorage.getItem('musicVolume');
+                if (musicVolStr !== null) {
+                    const parsed = parseFloat(musicVolStr);
+                    if (!isNaN(parsed)) {
+                        musicVolPercent = parsed;
+                    }
+                }
+            }
+            musicVol = Math.max(0, Math.min(1, musicVolPercent));
+        } else {
+            musicVol = clampedValue;
+            // Get master volume from its slider's current position in DOM
+            const masterHandle = document.getElementById('master-volume-handle');
+            let masterVolPercent = 1.0; // Default value
+            
+            if (masterHandle && masterHandle.style.left) {
+                const parsed = parseFloat(masterHandle.style.left);
+                if (!isNaN(parsed)) {
+                    masterVolPercent = parsed / 100;
+                }
+            } else {
+                // Fallback to localStorage
+                const masterVolStr = localStorage.getItem('masterVolume');
+                if (masterVolStr !== null) {
+                    const parsed = parseFloat(masterVolStr);
+                    if (!isNaN(parsed)) {
+                        masterVolPercent = parsed;
+                    }
+                }
+            }
+            masterVol = Math.max(0, Math.min(1, masterVolPercent));
+        }
+        
+        // Round to avoid floating point issues
+        masterVol = Math.round(masterVol * 1000) / 1000;
+        musicVol = Math.round(musicVol * 1000) / 1000;
+        
+        // CRITICAL: Must match slider threshold (0.05 = 5%) to ensure consistency
+        if (masterVol <= 0.05) masterVol = 0;
+        if (musicVol <= 0.05) musicVol = 0;
+        
+        console.log(`[SLIDER] ${type} slider updated:`, {
+            clampedValue,
+            masterVol,
+            musicVol,
+            isDragging
+        });
+        
         applyAudioSettings(
             document.getElementById('toggle-master-audio')?.checked ?? true,
             document.getElementById('toggle-music')?.checked ?? true,
-            type === 'master' ? clampedValue : parseFloat(localStorage.getItem('masterVolume')) || 1.0,
-            type === 'music' ? clampedValue : parseFloat(localStorage.getItem('musicVolume')) || 1.0
+            masterVol,
+            musicVol
         );
         sliderThrottle.lastAudioUpdate[type] = now;
     }
@@ -588,6 +687,9 @@ function setupVideoPanel() {
         return;
     }
 
+    // Flag to prevent toggles from switching preset to 'custom' when applying a preset
+    let isApplyingPreset = false;
+
     // Initialize video state from localStorage or defaults
     const savedPreset = localStorage.getItem('performancePreset') || 'mid';
     const antialiasingEnabled = localStorage.getItem('antialiasingEnabled') !== 'false';
@@ -595,7 +697,7 @@ function setupVideoPanel() {
     const fogEnabled = localStorage.getItem('fogEnabled') !== 'false';
     const snowEnabled = localStorage.getItem('snowEnabled') !== 'false';
     const leavesEnabled = localStorage.getItem('leavesEnabled') !== 'false';
-    const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+    const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) ?? 0.7;
 
     // Set preset dropdown
     if (presetSelect) {
@@ -620,18 +722,28 @@ function setupVideoPanel() {
             const preset = e.target.value;
             localStorage.setItem('performancePreset', preset);
             
+            // Set flag to prevent toggles from switching preset back to 'custom'
+            isApplyingPreset = true;
+            
             if (preset !== 'custom') {
                 const presetConfig = PERFORMANCE_PRESETS[preset];
                 if (presetConfig) {
-                    // Apply preset values
+                    // Apply preset values - set checked state
                     antialiasingToggle.checked = presetConfig.antialiasing;
                     bloomToggle.checked = presetConfig.bloom;
                     fogToggle.checked = presetConfig.fog;
                     snowToggle.checked = presetConfig.snow;
                     leavesToggle.checked = presetConfig.leaves;
                     
-                    // Update bloom slider
-                    updateBloomSliderValue(presetConfig.bloomIntensity, false);
+                    // Force visual update by dispatching change events
+                    antialiasingToggle.dispatchEvent(new Event('change', { bubbles: false }));
+                    bloomToggle.dispatchEvent(new Event('change', { bubbles: false }));
+                    fogToggle.dispatchEvent(new Event('change', { bubbles: false }));
+                    snowToggle.dispatchEvent(new Event('change', { bubbles: false }));
+                    leavesToggle.dispatchEvent(new Event('change', { bubbles: false }));
+                    
+                    // Update bloom slider (skip preset update since we're applying a preset)
+                    updateBloomSliderValue(presetConfig.bloomIntensity, false, true);
                     
                     // Save to localStorage
                     localStorage.setItem('antialiasingEnabled', presetConfig.antialiasing);
@@ -672,6 +784,14 @@ function setupVideoPanel() {
                 applyVideoSettings(customAntialiasing, customBloom, customFog, customBloomIntensity, customSnow, customLeaves);
                 updateBloomSliderState();
             }
+            
+            // Ensure preset value is set correctly after all updates
+            if (presetSelect) {
+                presetSelect.value = preset;
+            }
+            
+            // Reset flag after preset is applied
+            isApplyingPreset = false;
         });
     }
 
@@ -679,13 +799,26 @@ function setupVideoPanel() {
     antialiasingToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('antialiasingEnabled', enabled);
-        if (presetSelect) presetSelect.value = 'custom';
-        localStorage.setItem('performancePreset', 'custom');
+        
+        // Only switch to custom if not applying a preset
+        if (!isApplyingPreset) {
+            if (presetSelect) presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+        
         const bloomEnabled = bloomToggle.checked;
         const fogEnabled = fogToggle.checked;
         const snowEnabled = snowToggle.checked;
         const leavesEnabled = leavesToggle.checked;
-        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        const bloomIntensityValue = localStorage.getItem('bloomIntensity');
+        // CRITICAL: Properly handle 0 as valid value - only use default if null/undefined/NaN
+        let bloomIntensity;
+        if (bloomIntensityValue === null) {
+            bloomIntensity = 0.7;
+        } else {
+            const parsed = parseFloat(bloomIntensityValue);
+            bloomIntensity = isNaN(parsed) ? 0.7 : parsed;
+        }
         applyVideoSettings(enabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled);
         console.log('Antialiasing:', enabled ? 'ON' : 'OFF');
     });
@@ -694,13 +827,26 @@ function setupVideoPanel() {
     bloomToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('bloomEnabled', enabled);
-        if (presetSelect) presetSelect.value = 'custom';
-        localStorage.setItem('performancePreset', 'custom');
+        
+        // Only switch to custom if not applying a preset
+        if (!isApplyingPreset) {
+            if (presetSelect) presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+        
         const antialiasingEnabled = antialiasingToggle.checked;
         const fogEnabled = fogToggle.checked;
         const snowEnabled = snowToggle.checked;
         const leavesEnabled = leavesToggle.checked;
-        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        const bloomIntensityValue = localStorage.getItem('bloomIntensity');
+        // CRITICAL: Properly handle 0 as valid value - only use default if null/undefined/NaN
+        let bloomIntensity;
+        if (bloomIntensityValue === null) {
+            bloomIntensity = 0.7;
+        } else {
+            const parsed = parseFloat(bloomIntensityValue);
+            bloomIntensity = isNaN(parsed) ? 0.7 : parsed;
+        }
         applyVideoSettings(antialiasingEnabled, enabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled);
         updateBloomSliderState();
         console.log('Bloom Effect:', enabled ? 'ON' : 'OFF');
@@ -710,13 +856,26 @@ function setupVideoPanel() {
     fogToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('fogEnabled', enabled);
-        if (presetSelect) presetSelect.value = 'custom';
-        localStorage.setItem('performancePreset', 'custom');
+        
+        // Only switch to custom if not applying a preset
+        if (!isApplyingPreset) {
+            if (presetSelect) presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+        
         const antialiasingEnabled = antialiasingToggle.checked;
         const bloomEnabled = bloomToggle.checked;
         const snowEnabled = snowToggle.checked;
         const leavesEnabled = leavesToggle.checked;
-        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        const bloomIntensityValue = localStorage.getItem('bloomIntensity');
+        // CRITICAL: Properly handle 0 as valid value - only use default if null/undefined/NaN
+        let bloomIntensity;
+        if (bloomIntensityValue === null) {
+            bloomIntensity = 0.7;
+        } else {
+            const parsed = parseFloat(bloomIntensityValue);
+            bloomIntensity = isNaN(parsed) ? 0.7 : parsed;
+        }
         applyVideoSettings(antialiasingEnabled, bloomEnabled, enabled, bloomIntensity, snowEnabled, leavesEnabled);
         console.log('Fog:', enabled ? 'ON' : 'OFF');
     });
@@ -725,13 +884,26 @@ function setupVideoPanel() {
     snowToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('snowEnabled', enabled);
-        if (presetSelect) presetSelect.value = 'custom';
-        localStorage.setItem('performancePreset', 'custom');
+        
+        // Only switch to custom if not applying a preset
+        if (!isApplyingPreset) {
+            if (presetSelect) presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+        
         const antialiasingEnabled = antialiasingToggle.checked;
         const bloomEnabled = bloomToggle.checked;
         const fogEnabled = fogToggle.checked;
         const leavesEnabled = leavesToggle.checked;
-        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        const bloomIntensityValue = localStorage.getItem('bloomIntensity');
+        // CRITICAL: Properly handle 0 as valid value - only use default if null/undefined/NaN
+        let bloomIntensity;
+        if (bloomIntensityValue === null) {
+            bloomIntensity = 0.7;
+        } else {
+            const parsed = parseFloat(bloomIntensityValue);
+            bloomIntensity = isNaN(parsed) ? 0.7 : parsed;
+        }
         applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, enabled, leavesEnabled);
         console.log('Snow Particles:', enabled ? 'ON' : 'OFF');
     });
@@ -740,13 +912,26 @@ function setupVideoPanel() {
     leavesToggle.addEventListener('change', (e) => {
         const enabled = e.target.checked;
         localStorage.setItem('leavesEnabled', enabled);
-        if (presetSelect) presetSelect.value = 'custom';
-        localStorage.setItem('performancePreset', 'custom');
+        
+        // Only switch to custom if not applying a preset
+        if (!isApplyingPreset) {
+            if (presetSelect) presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+        
         const antialiasingEnabled = antialiasingToggle.checked;
         const bloomEnabled = bloomToggle.checked;
         const fogEnabled = fogToggle.checked;
         const snowEnabled = snowToggle.checked;
-        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        const bloomIntensityValue = localStorage.getItem('bloomIntensity');
+        // CRITICAL: Properly handle 0 as valid value - only use default if null/undefined/NaN
+        let bloomIntensity;
+        if (bloomIntensityValue === null) {
+            bloomIntensity = 0.7;
+        } else {
+            const parsed = parseFloat(bloomIntensityValue);
+            bloomIntensity = isNaN(parsed) ? 0.7 : parsed;
+        }
         applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, enabled);
         console.log('Leaves Particles:', enabled ? 'ON' : 'OFF');
     });
@@ -858,7 +1043,7 @@ function setupBloomSlider(initialValue) {
     document.addEventListener('touchend', stopDrag);
 }
 
-function updateBloomSliderValue(value, isDragging = false) {
+function updateBloomSliderValue(value, isDragging = false, skipPresetUpdate = false) {
     const fill = document.getElementById('bloom-intensity-fill');
     const handle = document.getElementById('bloom-intensity-handle');
     const percentage = document.getElementById('bloom-intensity-percentage');
@@ -880,7 +1065,7 @@ function updateBloomSliderValue(value, isDragging = false) {
     if (!isDragging || !updateBloomSliderValue.lastSave || now - updateBloomSliderValue.lastSave > 50) {
         localStorage.setItem('bloomIntensity', clampedValue.toString());
         updateBloomSliderValue.lastSave = now;
-        if (presetSelect) {
+        if (presetSelect && !skipPresetUpdate) {
             presetSelect.value = 'custom';
             localStorage.setItem('performancePreset', 'custom');
         }
@@ -974,9 +1159,28 @@ function applyAudioSettings(masterEnabled, musicEnabled, masterVolume, musicVolu
     const bgMusic = document.getElementById('bg-music');
     if (!bgMusic) return;
 
-    // Clamp volumes
-    const masterVol = Math.max(0, Math.min(1, masterVolume || 1.0));
-    const musicVol = Math.max(0, Math.min(1, musicVolume || 1.0));
+    // Validate and clamp volumes - handle NaN and invalid values
+    // CRITICAL: Use nullish coalescing to preserve 0 values (0 is valid, only null/undefined should default)
+    let masterVol = masterVolume ?? 1.0;
+    let musicVol = musicVolume ?? 1.0;
+    
+    // Check for NaN or non-finite values and replace with defaults
+    if (!isFinite(masterVol) || isNaN(masterVol)) {
+        console.warn('[AUDIO] Invalid masterVolume, using default 1.0');
+        masterVol = 1.0;
+    }
+    if (!isFinite(musicVol) || isNaN(musicVol)) {
+        console.warn('[AUDIO] Invalid musicVolume, using default 1.0');
+        musicVol = 1.0;
+    }
+    
+    // Clamp volumes to valid range [0, 1]
+    masterVol = Math.max(0, Math.min(1, masterVol));
+    musicVol = Math.max(0, Math.min(1, musicVol));
+    
+    // Round to 3 decimal places
+    masterVol = Math.round(masterVol * 1000) / 1000;
+    musicVol = Math.round(musicVol * 1000) / 1000;
 
     // Control ambient sound volume (async, but non-blocking)
     getAmbientSoundModule().then(module => {
@@ -996,30 +1200,46 @@ function applyAudioSettings(masterEnabled, musicEnabled, masterVolume, musicVolu
         // This is fine, volume will be set when entering first-person mode
     });
 
-    if (!masterEnabled) {
-        // Master audio off - mute everything
-        bgMusic.volume = 0;
-        bgMusic.pause();
-    } else if (musicEnabled) {
-        // Master on, music on - apply volume (master * music)
-        const finalVolume = masterVol * musicVol;
-        bgMusic.volume = finalVolume;
-        
-        // Only play if volume is greater than 0
-        if (finalVolume > 0) {
-            if (bgMusic.paused) {
-                bgMusic.play().catch(err => {
-                    console.warn('Could not play music:', err);
-                });
-            }
-        } else {
-            // Volume is 0, pause the music
+    // Calculate final volume
+    const finalVolume = masterVol * musicVol;
+
+    // Check if we should play music: toggles must be on AND volume must be greater than minimum threshold
+    // CRITICAL: Must match slider threshold (0.05 = 5%) to ensure consistency
+    // If EITHER volume is 0 or effectively 0 (less than 5% = 0.05), treat as muted
+    const isEffectivelyMuted = masterVol <= 0.05 || musicVol <= 0.05 || finalVolume <= MIN_AUDIO_VOLUME;
+    const shouldPlay = masterEnabled && musicEnabled && !isEffectivelyMuted;
+
+    // DEBUG: Log what's happening
+    console.log('[AUDIO] applyAudioSettings:', {
+        masterEnabled,
+        musicEnabled,
+        masterVol,
+        musicVol,
+        finalVolume,
+        isEffectivelyMuted,
+        shouldPlay,
+        currentlyPaused: bgMusic.paused
+    });
+
+    // CRITICAL: Always check muted state FIRST and pause immediately if muted
+    // This prevents music from starting during drag when values briefly go above threshold
+    if (isEffectivelyMuted || !masterEnabled || !musicEnabled) {
+        // Volume is 0, muted, or disabled - PAUSE IMMEDIATELY (like toggles)
+        if (!bgMusic.paused) {
+            console.log('[AUDIO] PAUSING - muted or disabled');
             bgMusic.pause();
+            bgMusic.currentTime = 0;
         }
-    } else {
-        // Master on, music off - mute music but keep master enabled
         bgMusic.volume = 0;
-        bgMusic.pause();
+    } else if (shouldPlay) {
+        // Master on, music on, volume > 0 - apply volume and play if needed
+        bgMusic.volume = finalVolume;
+        if (bgMusic.paused) {
+            console.log('[AUDIO] PLAYING - volume:', finalVolume);
+            bgMusic.play().catch(err => {
+                console.warn('Could not play music:', err);
+            });
+        }
     }
 }
 
@@ -1435,19 +1655,33 @@ export function setupSplashScreen() {
             // Check if music is enabled and apply volume
             const masterAudioEnabled = localStorage.getItem('masterAudioEnabled') !== 'false';
             const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
-            const masterVolume = parseFloat(localStorage.getItem('masterVolume')) || 1.0;
-            const musicVolume = parseFloat(localStorage.getItem('musicVolume')) || 1.0;
+            // CRITICAL: Check for null/undefined, not falsy (0 is valid!)
+            const masterVolumeStr = localStorage.getItem('masterVolume');
+            const masterVolume = masterVolumeStr !== null ? parseFloat(masterVolumeStr) : 1.0;
+            const musicVolumeStr = localStorage.getItem('musicVolume');
+            const musicVolume = musicVolumeStr !== null ? parseFloat(musicVolumeStr) : 1.0;
             
-            if (masterAudioEnabled && musicEnabled) {
-                bgMusic.volume = masterVolume * musicVolume;
+            // Clamp volumes
+            const masterVol = Math.max(0, Math.min(1, masterVolume));
+            const musicVol = Math.max(0, Math.min(1, musicVolume));
+            const finalVolume = masterVol * musicVol;
+            
+            // CRITICAL: Must match slider threshold (0.05 = 5%) to ensure consistency
+            const isEffectivelyMuted = masterVol <= 0.05 || musicVol <= 0.05 || finalVolume <= MIN_AUDIO_VOLUME;
+            const shouldPlay = masterAudioEnabled && musicEnabled && !isEffectivelyMuted;
+            
+            if (shouldPlay) {
+                bgMusic.volume = finalVolume;
                 bgMusic.play().then(() => {
                     console.log('✅ Background music started from splash screen!');
                 }).catch(err => {
                     console.error('Could not start music:', err);
                 });
             } else {
+                // Volume is 0, muted, or disabled - don't play
+                bgMusic.pause();
                 bgMusic.volume = 0;
-                console.log('Background music disabled in settings');
+                bgMusic.currentTime = 0;
             }
         }
         
@@ -1509,7 +1743,7 @@ function hideUI() {
     });
 }
 
-function showUI() {
+export function showUI() {
     uiVisible = true;
     const title = document.getElementById('title-screen');
     const uiBtn = document.getElementById('ui-toggle');
@@ -1652,9 +1886,214 @@ export function setupUI() {
     setupWorldGenPanel();
     setupGalleryPanel();
     setupSettingsPanel();
+    setupPauseMenu();
     setupNewsReelSnowflakes();
     // Countdown timer will be started when splash screen is dismissed
     // setupCountdownTimer(); // Moved to splash dismissal
+}
+
+// Setup pause menu
+export function setupPauseMenu() {
+    const pauseMenu = document.getElementById('pause-menu');
+    const resumeBtn = document.getElementById('pause-resume-btn');
+    const settingsBtn = document.getElementById('pause-settings-btn');
+    const quitBtn = document.getElementById('pause-quit-btn');
+    
+    if (!pauseMenu) {
+        console.warn('Pause menu element not found');
+        return;
+    }
+    
+    // Initialize pause menu as hidden
+    pauseMenu.classList.add('pause-menu-hidden');
+    pauseMenu.classList.remove('pause-menu-visible');
+    
+    // Resume button
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
+            
+            const { resumeGame } = await import('./main.js');
+            resumeGame();
+        });
+    }
+    
+    // Settings button
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
+            
+            // Open settings panel (pause menu stays visible behind it)
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel) {
+                settingsPanel.classList.remove('settings-panel-hidden');
+                settingsPanel.classList.add('settings-panel-visible');
+            }
+        });
+    }
+    
+    // Note: Settings panel close handler is already set up in setupSettingsPanel()
+    // When settings panel closes from pause menu, the pause menu will remain visible
+    // because it has a lower z-index and the settings panel just closes normally
+    
+    // Quit to Menu button
+    if (quitBtn) {
+        quitBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
+            
+            const { exitFirstPersonMode } = await import('./main.js');
+            exitFirstPersonMode();
+            
+            // Stop countdown timer if running
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            // Hide loading screen if visible
+            const { hideLoadingScreen } = await import('./loading-screen.js');
+            hideLoadingScreen();
+            
+            // Ensure canvas is visible (it should be, but make sure)
+            const { renderer } = await import('./main.js');
+            if (renderer && renderer.domElement) {
+                renderer.domElement.style.display = 'block';
+            }
+            
+            // Close all panels
+            const settingsPanel = document.getElementById('settings-panel');
+            const worldGenPanel = document.getElementById('world-gen-panel');
+            const galleryPanel = document.getElementById('gallery-panel');
+            const techPanel = document.getElementById('tech-info-panel');
+            
+            if (settingsPanel) {
+                settingsPanel.classList.remove('settings-panel-visible');
+                settingsPanel.classList.add('settings-panel-hidden');
+            }
+            if (worldGenPanel) {
+                worldGenPanel.classList.remove('world-gen-panel-visible');
+                worldGenPanel.classList.add('world-gen-panel-hidden');
+            }
+            if (galleryPanel) {
+                galleryPanel.classList.remove('gallery-panel-visible');
+                galleryPanel.classList.add('gallery-panel-hidden');
+            }
+            if (techPanel) {
+                techPanel.classList.remove('tech-info-panel-visible');
+                techPanel.classList.add('tech-info-panel-hidden');
+            }
+            
+            // Clear all !important inline styles added by loading screen
+            // These need to be explicitly removed since they override CSS
+            const titleScreen = document.getElementById('title-screen');
+            const menuContainer = document.querySelector('.menu-container');
+            const menuButtons = document.querySelectorAll('.menu-btn');
+            const newsReel = document.getElementById('news-reel');
+            const audioWarning = document.querySelector('.audio-warning');
+            const uiButtons = document.querySelectorAll('.ui-btn, .tech-toggle-btn');
+            const countdownTimer = document.getElementById('countdown-timer');
+            
+            const clearImportantStyles = (element) => {
+                if (element) {
+                    element.style.removeProperty('display');
+                    element.style.removeProperty('opacity');
+                    element.style.removeProperty('visibility');
+                    element.style.removeProperty('pointer-events');
+                }
+            };
+            
+            clearImportantStyles(titleScreen);
+            clearImportantStyles(menuContainer);
+            clearImportantStyles(newsReel);
+            clearImportantStyles(audioWarning);
+            
+            menuButtons.forEach(clearImportantStyles);
+            uiButtons.forEach(clearImportantStyles);
+            
+            // Reset countdown timer element if it exists
+            if (countdownTimer) {
+                clearImportantStyles(countdownTimer);
+                // Remove any warning/critical classes
+                countdownTimer.classList.remove('warning', 'critical');
+                // Reset text to 5
+                countdownTimer.textContent = '5';
+                // Make it visible again
+                countdownTimer.style.display = '';
+                countdownTimer.style.visibility = '';
+            }
+            
+            // Use showUI() to properly restore all UI elements
+            showUI();
+            
+            // Restart countdown timer (after a brief delay to ensure UI is visible)
+            setTimeout(() => {
+                setupCountdownTimer();
+            }, 100);
+            
+            // Restart background music
+            const bgMusic = document.getElementById('bg-music');
+            if (bgMusic) {
+                const masterAudioEnabled = localStorage.getItem('masterAudioEnabled') !== 'false';
+                const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
+                const masterVolumeStr = localStorage.getItem('masterVolume');
+                const masterVolume = masterVolumeStr !== null ? parseFloat(masterVolumeStr) : 1.0;
+                const musicVolumeStr = localStorage.getItem('musicVolume');
+                const musicVolume = musicVolumeStr !== null ? parseFloat(musicVolumeStr) : 1.0;
+                
+                const masterVol = Math.max(0, Math.min(1, masterVolume));
+                const musicVol = Math.max(0, Math.min(1, musicVolume));
+                const finalVolume = masterVol * musicVol;
+                
+                const MIN_AUDIO_VOLUME = 0.001;
+                const isEffectivelyMuted = masterVol <= 0.05 || musicVol <= 0.05 || finalVolume <= MIN_AUDIO_VOLUME;
+                const shouldPlay = masterAudioEnabled && musicEnabled && !isEffectivelyMuted;
+                
+                if (shouldPlay) {
+                    bgMusic.volume = finalVolume;
+                    bgMusic.play().catch(err => console.log('Could not resume music:', err));
+                }
+            }
+        });
+    }
+    
+    // Escape key handler for pausing (only in first-person mode)
+    document.addEventListener('keydown', async (event) => {
+        // Only handle Escape if in first-person mode and not in keybind listening mode
+        if (event.code === 'Escape') {
+            const keybindItems = document.querySelectorAll('.keybind-item.listening');
+            if (keybindItems.length > 0) {
+                // Don't pause if user is changing a keybind
+                return;
+            }
+            
+            // Check if we're in first-person mode
+            const { getIsPaused, pauseGame, resumeGame, getIsFirstPersonMode } = await import('./main.js');
+            const isFirstPerson = getIsFirstPersonMode();
+            
+            // Only handle pause/resume if in first-person mode
+            if (isFirstPerson) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const isPaused = getIsPaused();
+                
+                // If already paused, resume (hide menu)
+                // If not paused, pause (unlock pointer and show menu)
+                if (isPaused) {
+                    resumeGame();
+                } else {
+                    // Pause immediately - this will unlock pointer and show menu in one action
+                    pauseGame();
+                }
+            }
+        }
+    });
 }
 
 // Setup sound effects for menu buttons

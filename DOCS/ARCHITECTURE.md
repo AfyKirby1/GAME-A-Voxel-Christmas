@@ -25,12 +25,35 @@ The application can be packaged as a Windows executable using WebView2:
   - **Game World**: Generated in separate THREE.Group container for gameplay (150 block radius, 2x larger)
   - Menu world remains intact when generating game world
 - **First-Person Mode**: Manages camera mode switching between orbit and first-person views.
-  - `enterFirstPersonMode(spawnY)`: Switches to first-person camera with PointerLockControls, stops main menu music, starts ambient wind sound
-  - `exitFirstPersonMode()`: Returns to orbit camera mode, stops ambient wind sound
+  - `enterFirstPersonMode(spawnY)`: Switches to first-person camera with PointerLockControls, stops main menu music, starts ambient wind sound, shows crosshair, sets up block highlighting
+  - `exitFirstPersonMode()`: Returns to orbit camera mode, stops ambient wind sound, hides crosshair and block highlight
+  - `pauseGame()`: Pauses gameplay, unlocks pointer, shows pause menu
+  - `resumeGame()`: Resumes gameplay, hides pause menu, re-locks pointer
+  - `togglePause()`: Toggles pause state
+  - `getIsPaused()`: Returns current pause state
+  - `getIsFirstPersonMode()`: Returns current first-person mode state
   - `regenerateWorld(options, progressCallback)`: Creates separate game world in dedicated container (async with progress callback)
     - Accepts optional `progressCallback(percentage, statusText)` function for real-time progress updates
     - Progress updates at key generation stages (terrain, structures, trees)
     - Returns Promise that resolves with ground height for camera positioning
+- **Crosshair System**: Centered crosshair for first-person aiming reference
+  - Automatically shown/hidden when entering/exiting first-person mode
+  - Simple white crosshair with horizontal and vertical lines
+  - Non-interactive overlay (pointer-events: none)
+- **Block Highlighting System**: Real-time visual feedback for block targeting
+  - Uses THREE.Raycaster to detect blocks the player is looking at
+  - White wireframe outline (slightly larger than blocks) highlights targeted blocks
+  - Maximum highlight distance: 5 units
+  - Works with both regular meshes and instanced meshes
+  - Updates continuously in animation loop (only in first-person mode)
+  - Automatically hides when paused or exiting first-person mode
+- **Pause System**: Full pause functionality for first-person gameplay
+  - Escape key toggles pause (only active in first-person mode)
+  - Pause menu with three options: Resume, Settings, Quit to Menu
+  - Movement and controls disabled when paused
+  - Pointer automatically unlocks when paused for menu interaction
+  - Pointer re-locks when resuming (requires user click for gesture context)
+  - Proper z-index layering (pause menu below settings panel)
 
 ### 3. Configuration (`js/config.js`)
 - **Menu World Config** (`SCENE_OPTS`): Configuration for menu/preview world
@@ -85,6 +108,8 @@ The application can be packaged as a Windows executable using WebView2:
 - **`js/first-person-controls.js`**: First-person camera controller using PointerLockControls with WASD movement.
   - Wraps Three.js PointerLockControls for mouse look
   - Handles pointer lock/unlock events
+  - Note: `lock()` method doesn't return a Promise - it's a synchronous method that requests pointer lock
+  - Pointer lock requires user gesture context (click, keypress) to work
   - Manages camera rotation with pitch limits
   - **Movement System**: 
     - WASD movement controls with configurable keybinds
@@ -191,6 +216,13 @@ The application can be packaged as a Windows executable using WebView2:
     - Disabled state styling when toggles are off
     - Settings applied to renderer, composer, and scene objects
   - **Game UI Button Hiding**: `hideGameUIButtons()` function hides tech, quit, fullscreen, and show UI buttons when entering first-person mode.
+  - **Pause Menu Setup** (`setupPauseMenu()`): Pause system for first-person gameplay
+    - Escape key handler toggles pause (only active in first-person mode)
+    - Resume button calls `resumeGame()` to continue gameplay
+    - Settings button opens settings panel (pause menu stays behind)
+    - Quit to Menu button exits first-person mode and returns to title screen
+    - Proper cleanup of event listeners and UI state restoration
+    - UI sound effects for all pause menu buttons
 
 ## Event Observers & Connections
 

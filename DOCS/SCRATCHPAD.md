@@ -89,7 +89,73 @@
 - No menu flash or visible menu world during transition
 - Smooth fade-out animation when entering game
 
-## 2025-01-XX: Volume Slider Bug Fix
+## 2025-01-XX: Preset Dropdown Bug Fix
+
+### Issue
+- Performance preset dropdown text would not update when changing presets (Low, Mid, High, Custom)
+- Dropdown would always show "Custom" even when selecting Low, Mid, or High presets
+- User could not see which preset was actually selected
+
+### Root Cause
+- `updateBloomSliderValue()` function was automatically setting preset to 'custom' whenever bloom intensity was updated
+- When applying a preset, the code called `updateBloomSliderValue()` which immediately reset the preset dropdown to 'custom'
+- This happened even though `isApplyingPreset` flag was set to prevent toggle handlers from changing the preset
+
+### Solution
+1. Added `skipPresetUpdate` parameter to `updateBloomSliderValue()` function
+2. When calling `updateBloomSliderValue()` during preset application, pass `skipPresetUpdate = true`
+3. Explicitly set preset value after all updates complete to ensure dropdown text is correct
+4. This prevents bloom slider updates from interfering with preset selection
+
+### Files Modified
+- `js/ui.js` - Modified `updateBloomSliderValue()` to accept `skipPresetUpdate` parameter, updated preset change handler to pass flag and explicitly set preset value
+
+### Result
+- Preset dropdown now correctly displays selected preset (Low, Mid, High, or Custom)
+- Preset selection works as expected without interference from bloom slider updates
+- User can see which preset is active at all times
+
+## 2025-01-XX: Volume Slider and Bloom Toggle Zero Value Bug Fix
+
+### Critical Bugs Fixed
+1. **Volume Slider at 0%**: Music would play at 100% volume when slider was at 0%
+2. **Bloom Toggle at 0%**: Bloom effect would turn back on when toggled at 0% intensity
+
+### Root Cause
+- JavaScript's `||` operator treats `0` as falsy, so `0 || defaultValue` evaluates to `defaultValue`
+- In `applyAudioSettings()`: `masterVolume || 1.0` and `musicVolume || 1.0` would default to `1.0` when volume was `0`
+- In bloom intensity parsing: `parseFloat(value) || 0` could cause issues with falsy value handling
+- This caused sliders/toggles at 0% to incorrectly use maximum values instead of respecting the zero setting
+
+### Solution
+1. **Volume Slider Fix**: Changed `|| 1.0` to `?? 1.0` (nullish coalescing) in `applyAudioSettings()` function
+   - Nullish coalescing only treats `null` and `undefined` as falsy, preserving `0` as a valid value
+   - Music now correctly respects 0% volume settings
+
+2. **Bloom Intensity Fix**: Updated all 5 occurrences of bloom intensity parsing to explicitly check for `null`/`undefined`/`NaN`
+   - Changed from: `parseFloat(bloomIntensityValue) || 0`
+   - Changed to: Explicit null check with `isNaN()` validation
+   - Bloom toggle now correctly respects 0% intensity settings
+
+### Files Modified
+- `js/ui.js` - Fixed `applyAudioSettings()` volume handling (line ~1098-1099)
+- `js/ui.js` - Fixed all bloom intensity parsing (5 occurrences in toggle handlers)
+
+### Result
+- Volume sliders at 0% now correctly mute music instead of playing at 100%
+- Bloom toggle at 0% intensity now correctly keeps bloom off instead of turning it back on
+- Zero values are now properly preserved as valid settings throughout the UI
+
+## 2025-01-XX: Volume Slider Bug - UNRESOLVED (OLD)
+
+### Critical Bug: Music Plays at 0% Volume
+- **Status**: RESOLVED - See fix above
+- **Issue**: When dragging slider down to 0%, music continues playing
+- **Root Cause**: Slider handle width (18px) causes calculated values to be 0.02-0.05 instead of 0
+- **Attempted Fixes**: 8 different approaches, all failed
+- **Current State**: All thresholds set to 0.05 (5%), localStorage fallback fixed, but drag-down still fails
+
+## 2025-01-XX: Volume Slider Bug Fix (OLD - INCOMPLETE)
 
 ### Issue
 - Volume slider handle would jump to position 0 when grabbing/dragging
@@ -150,6 +216,61 @@
 - **Snowflake Animation**: Pixel-based `translateY` values (0px to 48px) for precise control
 - **Opacity Curve**: High visibility (0.8) maintained until 85% of animation, then gradual fade
 - **Rotation**: Continuous 540-degree rotation during fall for natural movement
+
+## 2025-01-XX: Escape Key and Quit to Menu Fixes
+
+### Issues Fixed
+1. **Escape Key Double-Press**: Required two escape presses - first unlocked pointer, second showed pause menu
+2. **Quit to Menu Broken**: Quit to menu button didn't properly clean up game session and restore UI
+3. **UI Not Restored**: UI elements didn't appear correctly when returning to main menu
+4. **Countdown Timer Not Restarting**: Timer didn't restart when returning to menu
+
+### Solutions
+
+#### 1. Escape Key Fix (`js/main.js`, `js/ui.js`)
+- **Problem**: Browser's default escape behavior unlocked pointer before our handler ran, requiring two presses
+- **Solution**: 
+  - Updated escape handler to explicitly check pause state and call `pauseGame()` or `resumeGame()`
+  - Added auto-pause listener on pointer unlock events (handles browser default unlock)
+  - Added `isHandlingPause` flag to prevent race conditions between escape handler and unlock listener
+  - Now pauses immediately on first escape press
+
+#### 2. Quit to Menu Cleanup (`js/main.js`, `js/ui.js`)
+- **Problem**: Camera not reset, orbit controls not restored, game world still visible, panels not closed
+- **Solution**:
+  - **Camera Reset**: Resets camera position to menu view (75, 45, 75)
+  - **Orbit Controls**: Re-enables with auto-rotate and resets target to menu center
+  - **Game World**: Hides game world container so only menu world is visible
+  - **State Flags**: Resets `isHandlingPause` flag
+  - **Panels**: Closes all panels (settings, gallery, tech, world-gen) before UI restoration
+
+#### 3. UI Restoration (`js/ui.js`)
+- **Problem**: Loading screen `!important` styles blocking UI elements, incomplete restoration
+- **Solution**:
+  - Exported `showUI()` function for centralized restoration
+  - Added cleanup of all `!important` inline styles from loading screen
+  - Ensures canvas visibility when returning to menu
+  - Closes all panels before UI restoration
+  - Uses centralized `showUI()` function for complete, consistent restoration
+
+#### 4. Countdown Timer Restart (`js/ui.js`)
+- **Problem**: Timer stopped but never restarted when returning to menu
+- **Solution**:
+  - Resets timer element (removes classes, resets text to '5', makes visible)
+  - Calls `setupCountdownTimer()` after UI restoration with 100ms delay
+  - Timer now restarts automatically for auto-hide functionality
+
+### Files Modified
+- `js/main.js` - Added camera/orbit reset, game world hiding, pause handling improvements
+- `js/ui.js` - Exported `showUI()`, improved quit-to-menu handler, timer restart logic
+
+### Result
+- ✅ Escape key pauses immediately on first press
+- ✅ Quit to menu properly cleans up game session
+- ✅ UI fully restored when returning to main menu
+- ✅ Countdown timer restarts automatically
+- ✅ All panels properly closed
+- ✅ Camera and controls properly reset to menu state
 
 ## 2025-01-XX: WASD Movement and Keybind System
 
