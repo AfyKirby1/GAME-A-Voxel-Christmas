@@ -1002,11 +1002,19 @@ function applyAudioSettings(masterEnabled, musicEnabled, masterVolume, musicVolu
         bgMusic.pause();
     } else if (musicEnabled) {
         // Master on, music on - apply volume (master * music)
-        bgMusic.volume = masterVol * musicVol;
-        if (bgMusic.paused) {
-            bgMusic.play().catch(err => {
-                console.warn('Could not play music:', err);
-            });
+        const finalVolume = masterVol * musicVol;
+        bgMusic.volume = finalVolume;
+        
+        // Only play if volume is greater than 0
+        if (finalVolume > 0) {
+            if (bgMusic.paused) {
+                bgMusic.play().catch(err => {
+                    console.warn('Could not play music:', err);
+                });
+            }
+        } else {
+            // Volume is 0, pause the music
+            bgMusic.pause();
         }
     } else {
         // Master on, music off - mute music but keep master enabled
