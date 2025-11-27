@@ -1,8 +1,20 @@
 import * as THREE from 'three';
 import { PEAK_HEIGHT, GAME_PEAK_HEIGHT } from './config.js';
+import { registerBlock, clearRegistry } from './block-registry.js';
 
 // Reusable Geometry
 const geometryBox = new THREE.BoxGeometry(1, 1, 1);
+
+// Edge geometry for block borders
+const edgeGeometry = new THREE.EdgesGeometry(geometryBox);
+const edgeMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x000000,
+    depthTest: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1
+});
 
 // Materials
 const mats = {
@@ -28,17 +40,34 @@ let generatedObjects = {
     lights: []
 };
 
-function createVoxel(container, x, y, z, material) {
+function createVoxel(container, x, y, z, material, blockType = 'unknown', enableEdges = true) {
+    // Create the main block mesh
     const mesh = new THREE.Mesh(geometryBox, material);
     mesh.position.set(x, y, z);
+    mesh.renderOrder = 0;
     container.add(mesh);
-    return mesh;
+    
+    let edges = null;
+    if (enableEdges) {
+        // Create edge lines for block borders
+        edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        edges.position.set(x, y, z);
+        edges.renderOrder = 1; // Render after blocks to avoid z-fighting
+        container.add(edges);
+    }
+    
+    // Register block in registry
+    registerBlock(x, y, z, blockType, mesh, false, null, container);
+    
+    // Return both mesh and edges for tracking
+    return { mesh, edges };
 }
 
 export function generateTerrainInstanced(container, SCENE_OPTS, options = {}, outputArray = null) {
     const hills = options.hills !== false; // Default to true if not specified
     const useGameHeight = options.useGameHeight || false;
     const peakHeight = useGameHeight ? GAME_PEAK_HEIGHT : PEAK_HEIGHT;
+    const enableSnowEdges = options.enableSnowEdges !== false; // Default to true, can be disabled for menu
     
     const r = SCENE_OPTS.worldRadius;
     const hillR = SCENE_OPTS.hillRadius;
@@ -49,6 +78,14 @@ export function generateTerrainInstanced(container, SCENE_OPTS, options = {}, ou
 
     const dirtMesh = new THREE.InstancedMesh(geometryBox, mats.dirt, maxCount);
     const snowMesh = new THREE.InstancedMesh(geometryBox, mats.snowBlock, maxCount);
+    dirtMesh.renderOrder = 0;
+    snowMesh.renderOrder = 0;
+    
+    // Create edge instanced meshes for block borders
+    const dirtEdgeMesh = new THREE.InstancedMesh(edgeGeometry, edgeMaterial, maxCount);
+    dirtEdgeMesh.renderOrder = 1;
+    const snowEdgeMesh = enableSnowEdges ? new THREE.InstancedMesh(edgeGeometry, edgeMaterial, maxCount) : null;
+    if (snowEdgeMesh) snowEdgeMesh.renderOrder = 1;
 
     const dummy = new THREE.Object3D();
     let dirtIdx = 0;
@@ -86,22 +123,40 @@ export function generateTerrainInstanced(container, SCENE_OPTS, options = {}, ou
             for (let y = -1; y <= h; y++) {
                 dummy.position.set(x, y, z);
                 dummy.updateMatrix();
-                if (y === h) snowMesh.setMatrixAt(snowIdx++, dummy.matrix);
-                else dirtMesh.setMatrixAt(dirtIdx++, dummy.matrix);
+                if (y === h) {
+                    snowMesh.setMatrixAt(snowIdx, dummy.matrix);
+                    if (snowEdgeMesh) {
+                        snowEdgeMesh.setMatrixAt(snowIdx, dummy.matrix);
+                    }
+                    registerBlock(x, y, z, 'snow', snowMesh, true, snowIdx, container);
+                    snowIdx++;
+                } else {
+                    dirtMesh.setMatrixAt(dirtIdx, dummy.matrix);
+                    dirtEdgeMesh.setMatrixAt(dirtIdx, dummy.matrix);
+                    registerBlock(x, y, z, 'dirt', dirtMesh, true, dirtIdx, container);
+                    dirtIdx++;
+                }
             }
         }
     }
     dirtMesh.count = dirtIdx;
     snowMesh.count = snowIdx;
+    dirtEdgeMesh.count = dirtIdx;
+    if (snowEdgeMesh) snowEdgeMesh.count = snowIdx;
+    
     container.add(dirtMesh);
     container.add(snowMesh);
+    container.add(dirtEdgeMesh);
+    if (snowEdgeMesh) container.add(snowEdgeMesh);
     
     // Track for cleanup
-    generatedObjects.terrain.push(dirtMesh, snowMesh);
+    generatedObjects.terrain.push(dirtMesh, snowMesh, dirtEdgeMesh);
+    if (snowEdgeMesh) generatedObjects.terrain.push(snowEdgeMesh);
     
     // Add to output array if provided
     if (outputArray) {
-        outputArray.push(dirtMesh, snowMesh);
+        outputArray.push(dirtMesh, snowMesh, dirtEdgeMesh);
+        if (snowEdgeMesh) outputArray.push(snowEdgeMesh);
     }
 }
 
@@ -120,13 +175,13 @@ export function generateHouse(container, options = {}, outputArray = null) {
             for (let z = -hw; z <= hw; z++) {
                 const vy = floorY + y;
                 if (y === 0) {
-                    const voxel = createVoxel(container, x, vy, z, mats.plank);
-                    houseObjects.push(voxel);
+                    const voxel = createVoxel(container, x, vy, z, mats.plank, 'plank');
+                    houseObjects.push(voxel.mesh, voxel.edges);
                 } else if (Math.abs(x) === hw || Math.abs(z) === hw) {
                     if (z === hw && x === 0 && y < 3) continue;
                     if (y === 2 && ((Math.abs(x) === hw && z === 0) || (z === -hw && x === 0))) {
-                        const voxel = createVoxel(container, x, vy, z, mats.window);
-                        houseObjects.push(voxel);
+                        const voxel = createVoxel(container, x, vy, z, mats.window, 'window');
+                        houseObjects.push(voxel.mesh, voxel.edges);
                         if (x === -hw && z === 0) {
                             const light = new THREE.PointLight(0xffaa00, 1, 8);
                             light.position.set(x, vy, z);
@@ -134,8 +189,8 @@ export function generateHouse(container, options = {}, outputArray = null) {
                             houseObjects.push(light);
                         }
                     } else {
-                        const voxel = createVoxel(container, x, vy, z, mats.wood);
-                        houseObjects.push(voxel);
+                        const voxel = createVoxel(container, x, vy, z, mats.wood, 'wood');
+                        houseObjects.push(voxel.mesh, voxel.edges);
                     }
                 }
             }
@@ -146,16 +201,17 @@ export function generateHouse(container, options = {}, outputArray = null) {
         const range = hw + 1 - i;
         for (let x = -range; x <= range; x++) {
             for (let z = -range; z <= range; z++) {
-                const voxel1 = createVoxel(container, x, roofStart + i, z, mats.stone);
-                const voxel2 = createVoxel(container, x, roofStart + i + 0.6, z, mats.snowBlock);
-                voxel2.scale.set(1, 0.2, 1);
-                houseObjects.push(voxel1, voxel2);
+                const voxel1 = createVoxel(container, x, roofStart + i, z, mats.stone, 'stone');
+                const voxel2 = createVoxel(container, x, roofStart + i + 0.6, z, mats.snowBlock, 'snow');
+                voxel2.mesh.scale.set(1, 0.2, 1);
+                voxel2.edges.scale.set(1, 0.2, 1);
+                houseObjects.push(voxel1.mesh, voxel1.edges, voxel2.mesh, voxel2.edges);
             }
         }
     }
-    const voxel1 = createVoxel(container, 1, roofStart + 2, 1, mats.stone);
-    const voxel2 = createVoxel(container, 1, roofStart + 3, 1, mats.stone);
-    houseObjects.push(voxel1, voxel2);
+    const voxel1 = createVoxel(container, 1, roofStart + 2, 1, mats.stone, 'stone');
+    const voxel2 = createVoxel(container, 1, roofStart + 3, 1, mats.stone, 'stone');
+    houseObjects.push(voxel1.mesh, voxel1.edges, voxel2.mesh, voxel2.edges);
     
     // Track for cleanup
     generatedObjects.house.push(...houseObjects);
@@ -212,8 +268,8 @@ function buildTree(container, x, y, z, lightsEnabled = true) {
     const treeObjects = [];
     const h = 4 + Math.floor(Math.random() * 2);
     for (let i = 0; i < h; i++) {
-        const voxel = createVoxel(container, x, y + i, z, mats.wood);
-        treeObjects.push(voxel);
+        const voxel = createVoxel(container, x, y + i, z, mats.wood, 'wood');
+        treeObjects.push(voxel.mesh, voxel.edges);
     }
 
     const leafStart = y + h - 2;
@@ -233,8 +289,8 @@ function buildTree(container, x, y, z, lightsEnabled = true) {
 
                 const vx = x + lx;
                 const vz = z + lz;
-                const voxel = createVoxel(container, vx, ly, vz, mats.leaves);
-                treeObjects.push(voxel);
+                const voxel = createVoxel(container, vx, ly, vz, mats.leaves, 'leaves');
+                treeObjects.push(voxel.mesh, voxel.edges);
 
                 // Lights: 4% chance (only if enabled)
                 if (lightsEnabled && Math.random() < 0.04) {
@@ -263,7 +319,7 @@ function addLight(container, x, y, z, lx, ly, lz) {
 
 // Clear all generated world objects from a container
 export function clearWorld(container) {
-    // Remove terrain
+    // Remove terrain (including edge meshes)
     generatedObjects.terrain.forEach(obj => {
         container.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
@@ -276,7 +332,7 @@ export function clearWorld(container) {
         }
     });
     
-    // Remove house objects
+    // Remove house objects (including edge lines)
     generatedObjects.house.forEach(obj => {
         container.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
@@ -289,7 +345,7 @@ export function clearWorld(container) {
         }
     });
     
-    // Remove trees
+    // Remove trees (including edge lines)
     generatedObjects.trees.forEach(obj => {
         container.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
@@ -307,6 +363,9 @@ export function clearWorld(container) {
     generatedObjects.house = [];
     generatedObjects.trees = [];
     generatedObjects.lights = [];
+    
+    // Clear block registry
+    clearRegistry();
 }
 
 // Calculate ground height at given X/Z position

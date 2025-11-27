@@ -8,6 +8,8 @@ export class ParticleManager {
         this.snowVelocities = [];
         this.leafSystem = null;
         this.leafData = [];
+        this.snowEnabled = true;
+        this.leavesEnabled = true;
 
         this.initSnow();
         this.initLeaves();
@@ -74,7 +76,7 @@ export class ParticleManager {
     update() {
         const now = Date.now();
 
-        if (this.snowSystem) {
+        if (this.snowSystem && this.snowEnabled !== false) {
             const pos = this.snowSystem.geometry.attributes.position.array;
             for (let i = 0; i < this.SCENE_OPTS.snowCount; i++) {
                 const idx = i * 3;
@@ -85,7 +87,7 @@ export class ParticleManager {
             this.snowSystem.geometry.attributes.position.needsUpdate = true;
         }
 
-        if (this.leafSystem) {
+        if (this.leafSystem && this.leavesEnabled !== false) {
             const pos = this.leafSystem.geometry.attributes.position.array;
             const spread = this.SCENE_OPTS.worldRadius * 2.2;
             for (let i = 0; i < this.SCENE_OPTS.leafCount; i++) {
@@ -102,6 +104,20 @@ export class ParticleManager {
                 }
             }
             this.leafSystem.geometry.attributes.position.needsUpdate = true;
+        }
+    }
+
+    setSnowEnabled(enabled) {
+        this.snowEnabled = enabled;
+        if (this.snowSystem) {
+            this.snowSystem.visible = enabled;
+        }
+    }
+
+    setLeavesEnabled(enabled) {
+        this.leavesEnabled = enabled;
+        if (this.leafSystem) {
+            this.leafSystem.visible = enabled;
         }
     }
 }

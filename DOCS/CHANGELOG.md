@@ -3,6 +3,59 @@
 ## [Unreleased]
 
 ### Added
+- **UI Sound Effects System**:
+  - Hover sounds for menu buttons (900 Hz sine wave, 0.1s duration, subtle volume)
+  - Click sounds for menu buttons and splash screen (500 Hz sine wave, 0.15s duration)
+  - Procedural sound generation using Tone.js oscillators
+  - Automatic integration with master audio settings (respects toggle)
+  - Dynamic module loading to avoid unnecessary Tone.js initialization
+  - Proper audio context management and resource cleanup
+  - Sounds applied to all `.menu-btn` elements and splash screen interactions
+- **Block Borders System**:
+  - All voxel blocks now have visible edge lines (Minecraft-style borders)
+  - Black edge lines (`0x000000`) for classic block appearance
+  - Edge lines added to individual blocks (house, trees) using `THREE.LineSegments`
+  - Edge lines added to instanced terrain using `InstancedMesh` for performance
+  - Edge lines use `polygonOffset` to prevent z-fighting with block faces
+  - Edge lines have `renderOrder = 1` to render after blocks
+  - Menu world snow blocks have edges disabled to prevent flickering
+  - Game world retains all edge lines for full block appearance
+- **Block Registry System** (`js/block-registry.js`):
+  - Comprehensive block tracking system for future destructibility functionality
+  - Tracks all blocks with position (x, y, z), type, mesh reference, and container
+  - Supports both instanced meshes (terrain) and individual meshes (house, trees)
+  - Fast O(1) lookups using Map with string keys (`"x,y,z"`)
+  - Functions: `registerBlock()`, `getBlock()`, `removeBlock()`, `clearRegistry()`
+  - All blocks automatically registered when created
+  - Registry cleared when world is cleared
+- **Video Settings Panel**:
+  - New Video tab in Settings panel with graphics options
+  - Antialiasing toggle (on/off) - smooths jagged edges
+  - Bloom Effect toggle (on/off) with intensity slider (0-100%)
+  - Fog toggle (on/off) - atmospheric distance fog
+  - All settings persist to localStorage
+  - Real-time application of video settings
+  - Styled to match Audio and Controls panels
+  - Bloom intensity slider with draggable handle and percentage display
+  - Disabled state styling when toggles are off
+- **Gallery System**:
+  - New "Gallery" button added to main menu with Christmas artsy styling
+  - Gallery button features warm pink/red gradient matching Christmas theme
+  - Picture frame emoji (🖼️) and sparkles (✨) decorative elements
+  - Pulsing glow animation matching other interactive buttons
+  - Full gallery panel with tabbed interface
+  - Four category tabs: Entities, Blocks, Structures, Plants
+  - Sleek card-based grid layout for gallery items
+  - Hover animations with lift effect and glow
+  - Responsive grid that auto-fills columns
+  - Smooth tab switching with fade transitions
+  - Gallery items display with icons, names, and descriptions:
+    - **Entities**: Christmas Light, Tree Light
+    - **Blocks**: Snow Block, Dirt Block, Wood Block, Leaves Block, Stone Block, Plank Block, Window Block
+    - **Structures**: House
+    - **Plants**: Christmas Tree
+  - Gallery panel pauses countdown timer when opened
+  - Mobile-responsive design with adaptive grid
 - **WASD Movement System**:
   - Full first-person movement controls (W/A/S/D for forward/left/backward/right)
   - Movement respects camera rotation (forward = camera direction)
@@ -128,6 +181,10 @@
   - Disabled state styling when toggles are off
 
 ### Changed
+- **Block Rendering**: All blocks now display with visible borders for authentic voxel appearance
+- **World Generation**: Block registry integrated into all generation functions (terrain, house, trees)
+- **Edge Line Rendering**: Optimized edge line rendering to prevent z-fighting and flickering
+- **Menu World**: Snow block edges disabled on menu world to prevent visual artifacts
 - News reel styling updated to pill shape with RGB LED border animation.
 - Play button made clickable with enhanced visual feedback.
 - Settings button now has glowy snowy appearance matching Play button.

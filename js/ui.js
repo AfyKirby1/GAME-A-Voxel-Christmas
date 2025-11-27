@@ -1,3 +1,6 @@
+// Import THREE for fog control
+import * as THREE from 'three';
+
 // Import ambient sound functions (will be loaded when needed)
 let ambientSoundModule = null;
 async function getAmbientSoundModule() {
@@ -5,6 +8,15 @@ async function getAmbientSoundModule() {
         ambientSoundModule = await import('./ambient-sound.js');
     }
     return ambientSoundModule;
+}
+
+// Import UI sound effects (will be loaded when needed)
+let uiSoundsModule = null;
+async function getUISoundsModule() {
+    if (!uiSoundsModule) {
+        uiSoundsModule = await import('./ui-sounds.js');
+    }
+    return uiSoundsModule;
 }
 
 // Import keybind functions
@@ -41,6 +53,76 @@ export function setupTechInfoPanel() {
             panel.classList.remove('tech-panel-visible');
             panel.classList.add('tech-panel-hidden');
         }
+    });
+}
+
+export function setupGalleryPanel() {
+    const galleryBtn = document.getElementById('gallery-btn');
+    const galleryPanel = document.getElementById('gallery-panel');
+    const closeBtn = document.getElementById('close-gallery');
+
+    if (!galleryBtn || !galleryPanel) {
+        console.warn('Gallery panel elements not found');
+        return;
+    }
+
+    // Initialize panel as hidden
+    galleryPanel.classList.add('gallery-panel-hidden');
+    galleryPanel.classList.remove('gallery-panel-visible');
+
+    // Show panel when Gallery button is clicked
+    galleryBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Disable countdown timer and auto-hide logic
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
+        // Hide and remove the countdown timer
+        const timer = document.getElementById('countdown-timer');
+        if (timer) {
+            timer.style.display = 'none';
+        }
+        
+        galleryPanel.classList.remove('gallery-panel-hidden');
+        galleryPanel.classList.add('gallery-panel-visible');
+    });
+
+    // Close panel when close button is clicked
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            galleryPanel.classList.remove('gallery-panel-visible');
+            galleryPanel.classList.add('gallery-panel-hidden');
+        });
+    }
+
+    // Setup Gallery Tab Navigation
+    setupGalleryTabs();
+}
+
+function setupGalleryTabs() {
+    const tabs = document.querySelectorAll('.gallery-tab');
+    const tabContents = document.querySelectorAll('.gallery-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetTab = tab.getAttribute('data-tab');
+
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const targetContent = document.getElementById(`gallery-${targetTab}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
     });
 }
 
@@ -95,6 +177,9 @@ export function setupSettingsPanel() {
     
     // Setup Controls Panel (after tabs so elements exist)
     setupControlsPanel();
+    
+    // Setup Video Panel (after tabs so elements exist)
+    setupVideoPanel();
 }
 
 function setupSettingsTabs() {
@@ -459,6 +544,429 @@ function setupControlsPanel() {
                 await startListeningForKey(keyElement, keybindAction);
             });
         }
+    });
+}
+
+// Performance presets
+const PERFORMANCE_PRESETS = {
+    low: {
+        antialiasing: false,
+        bloom: false,
+        bloomIntensity: 0,
+        fog: false,
+        snow: false,
+        leaves: false
+    },
+    mid: {
+        antialiasing: true,
+        bloom: true,
+        bloomIntensity: 0.5,
+        fog: true,
+        snow: true,
+        leaves: true
+    },
+    high: {
+        antialiasing: true,
+        bloom: true,
+        bloomIntensity: 0.7,
+        fog: true,
+        snow: true,
+        leaves: true
+    }
+};
+
+function setupVideoPanel() {
+    const presetSelect = document.getElementById('performance-preset');
+    const antialiasingToggle = document.getElementById('toggle-antialiasing');
+    const bloomToggle = document.getElementById('toggle-bloom');
+    const fogToggle = document.getElementById('toggle-fog');
+    const snowToggle = document.getElementById('toggle-snow');
+    const leavesToggle = document.getElementById('toggle-leaves');
+
+    if (!antialiasingToggle || !bloomToggle || !fogToggle || !snowToggle || !leavesToggle) {
+        console.warn('Video panel elements not found');
+        return;
+    }
+
+    // Initialize video state from localStorage or defaults
+    const savedPreset = localStorage.getItem('performancePreset') || 'mid';
+    const antialiasingEnabled = localStorage.getItem('antialiasingEnabled') !== 'false';
+    const bloomEnabled = localStorage.getItem('bloomEnabled') !== 'false';
+    const fogEnabled = localStorage.getItem('fogEnabled') !== 'false';
+    const snowEnabled = localStorage.getItem('snowEnabled') !== 'false';
+    const leavesEnabled = localStorage.getItem('leavesEnabled') !== 'false';
+    const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+
+    // Set preset dropdown
+    if (presetSelect) {
+        presetSelect.value = savedPreset;
+    }
+
+    antialiasingToggle.checked = antialiasingEnabled;
+    bloomToggle.checked = bloomEnabled;
+    fogToggle.checked = fogEnabled;
+    snowToggle.checked = snowEnabled;
+    leavesToggle.checked = leavesEnabled;
+
+    // Initialize bloom intensity slider
+    setupBloomSlider(bloomIntensity);
+
+    // Apply initial state
+    applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled);
+
+    // Preset Select
+    if (presetSelect) {
+        presetSelect.addEventListener('change', (e) => {
+            const preset = e.target.value;
+            localStorage.setItem('performancePreset', preset);
+            
+            if (preset !== 'custom') {
+                const presetConfig = PERFORMANCE_PRESETS[preset];
+                if (presetConfig) {
+                    // Apply preset values
+                    antialiasingToggle.checked = presetConfig.antialiasing;
+                    bloomToggle.checked = presetConfig.bloom;
+                    fogToggle.checked = presetConfig.fog;
+                    snowToggle.checked = presetConfig.snow;
+                    leavesToggle.checked = presetConfig.leaves;
+                    
+                    // Update bloom slider
+                    updateBloomSliderValue(presetConfig.bloomIntensity, false);
+                    
+                    // Save to localStorage
+                    localStorage.setItem('antialiasingEnabled', presetConfig.antialiasing);
+                    localStorage.setItem('bloomEnabled', presetConfig.bloom);
+                    localStorage.setItem('fogEnabled', presetConfig.fog);
+                    localStorage.setItem('snowEnabled', presetConfig.snow);
+                    localStorage.setItem('leavesEnabled', presetConfig.leaves);
+                    localStorage.setItem('bloomIntensity', presetConfig.bloomIntensity);
+                    
+                    // Apply settings
+                    applyVideoSettings(
+                        presetConfig.antialiasing,
+                        presetConfig.bloom,
+                        presetConfig.fog,
+                        presetConfig.bloomIntensity,
+                        presetConfig.snow,
+                        presetConfig.leaves
+                    );
+                    
+                    updateBloomSliderState();
+                    console.log('Performance preset:', preset);
+                }
+            } else {
+                // Custom preset - load saved values
+                const customAntialiasing = localStorage.getItem('antialiasingEnabled') !== 'false';
+                const customBloom = localStorage.getItem('bloomEnabled') !== 'false';
+                const customFog = localStorage.getItem('fogEnabled') !== 'false';
+                const customSnow = localStorage.getItem('snowEnabled') !== 'false';
+                const customLeaves = localStorage.getItem('leavesEnabled') !== 'false';
+                const customBloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+                
+                antialiasingToggle.checked = customAntialiasing;
+                bloomToggle.checked = customBloom;
+                fogToggle.checked = customFog;
+                snowToggle.checked = customSnow;
+                leavesToggle.checked = customLeaves;
+                updateBloomSliderValue(customBloomIntensity, false);
+                applyVideoSettings(customAntialiasing, customBloom, customFog, customBloomIntensity, customSnow, customLeaves);
+                updateBloomSliderState();
+            }
+        });
+    }
+
+    // Antialiasing Toggle
+    antialiasingToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('antialiasingEnabled', enabled);
+        if (presetSelect) presetSelect.value = 'custom';
+        localStorage.setItem('performancePreset', 'custom');
+        const bloomEnabled = bloomToggle.checked;
+        const fogEnabled = fogToggle.checked;
+        const snowEnabled = snowToggle.checked;
+        const leavesEnabled = leavesToggle.checked;
+        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        applyVideoSettings(enabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled);
+        console.log('Antialiasing:', enabled ? 'ON' : 'OFF');
+    });
+
+    // Bloom Toggle
+    bloomToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('bloomEnabled', enabled);
+        if (presetSelect) presetSelect.value = 'custom';
+        localStorage.setItem('performancePreset', 'custom');
+        const antialiasingEnabled = antialiasingToggle.checked;
+        const fogEnabled = fogToggle.checked;
+        const snowEnabled = snowToggle.checked;
+        const leavesEnabled = leavesToggle.checked;
+        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        applyVideoSettings(antialiasingEnabled, enabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled);
+        updateBloomSliderState();
+        console.log('Bloom Effect:', enabled ? 'ON' : 'OFF');
+    });
+
+    // Fog Toggle
+    fogToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('fogEnabled', enabled);
+        if (presetSelect) presetSelect.value = 'custom';
+        localStorage.setItem('performancePreset', 'custom');
+        const antialiasingEnabled = antialiasingToggle.checked;
+        const bloomEnabled = bloomToggle.checked;
+        const snowEnabled = snowToggle.checked;
+        const leavesEnabled = leavesToggle.checked;
+        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        applyVideoSettings(antialiasingEnabled, bloomEnabled, enabled, bloomIntensity, snowEnabled, leavesEnabled);
+        console.log('Fog:', enabled ? 'ON' : 'OFF');
+    });
+
+    // Snow Toggle
+    snowToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('snowEnabled', enabled);
+        if (presetSelect) presetSelect.value = 'custom';
+        localStorage.setItem('performancePreset', 'custom');
+        const antialiasingEnabled = antialiasingToggle.checked;
+        const bloomEnabled = bloomToggle.checked;
+        const fogEnabled = fogToggle.checked;
+        const leavesEnabled = leavesToggle.checked;
+        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, enabled, leavesEnabled);
+        console.log('Snow Particles:', enabled ? 'ON' : 'OFF');
+    });
+
+    // Leaves Toggle
+    leavesToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('leavesEnabled', enabled);
+        if (presetSelect) presetSelect.value = 'custom';
+        localStorage.setItem('performancePreset', 'custom');
+        const antialiasingEnabled = antialiasingToggle.checked;
+        const bloomEnabled = bloomToggle.checked;
+        const fogEnabled = fogToggle.checked;
+        const snowEnabled = snowToggle.checked;
+        const bloomIntensity = parseFloat(localStorage.getItem('bloomIntensity')) || 0.7;
+        applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, enabled);
+        console.log('Leaves Particles:', enabled ? 'ON' : 'OFF');
+    });
+}
+
+function setupBloomSlider(initialValue) {
+    const slider = document.getElementById('bloom-intensity-slider');
+    const track = slider?.querySelector('.volume-slider-track');
+    const fill = document.getElementById('bloom-intensity-fill');
+    const handle = document.getElementById('bloom-intensity-handle');
+    const percentage = document.getElementById('bloom-intensity-percentage');
+
+    if (!slider || !track || !fill || !handle || !percentage) {
+        console.warn('Bloom slider elements not found');
+        return;
+    }
+
+    let isDragging = false;
+    let animationFrameId = null;
+
+    // Set initial value
+    updateBloomSliderValue(initialValue, false);
+
+    // Simple function to calculate percentage from mouse/touch position
+    const getPercentageFromEvent = (clientX) => {
+        const rect = track.getBoundingClientRect();
+        const x = clientX - rect.left;
+        return Math.max(0, Math.min(1, x / rect.width));
+    };
+
+    // Update slider value from event
+    const updateFromEvent = (e, isDraggingFlag) => {
+        const clientX = e.clientX || e.touches?.[0]?.clientX;
+        if (clientX === undefined) return;
+        
+        const percent = getPercentageFromEvent(clientX);
+        updateBloomSliderValue(percent, isDraggingFlag);
+    };
+
+    // Start dragging
+    const startDrag = (e) => {
+        isDragging = true;
+        slider.classList.add('dragging');
+        e.preventDefault();
+        e.stopPropagation();
+        updateFromEvent(e, true);
+    };
+
+    // Handle drag movement
+    const handleDrag = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
+        animationFrameId = requestAnimationFrame(() => {
+            updateFromEvent(e, true);
+        });
+    };
+
+    // Stop dragging
+    const stopDrag = () => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        isDragging = false;
+        slider.classList.remove('dragging');
+    };
+
+    // Click on track to jump to position
+    track.addEventListener('click', (e) => {
+        if (!isDragging && e.target !== handle && !handle.contains(e.target)) {
+            updateFromEvent(e, false);
+        }
+    });
+
+    // Handle mouse events
+    handle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        startDrag(e);
+    });
+    
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', stopDrag);
+
+    // Handle touch events
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startDrag(e);
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
+        animationFrameId = requestAnimationFrame(() => {
+            updateFromEvent(e, true);
+        });
+    });
+    
+    document.addEventListener('touchend', stopDrag);
+}
+
+function updateBloomSliderValue(value, isDragging = false) {
+    const fill = document.getElementById('bloom-intensity-fill');
+    const handle = document.getElementById('bloom-intensity-handle');
+    const percentage = document.getElementById('bloom-intensity-percentage');
+    const presetSelect = document.getElementById('performance-preset');
+
+    if (!fill || !handle || !percentage) return;
+
+    const clampedValue = Math.max(0, Math.min(1, value));
+    const percentageValue = Math.round(clampedValue * 100);
+    const percentageString = `${clampedValue * 100}%`;
+
+    // Update visual elements instantly
+    fill.style.width = percentageString;
+    handle.style.left = percentageString;
+    percentage.textContent = `${percentageValue}%`;
+
+    // Save to localStorage (throttle during dragging)
+    const now = Date.now();
+    if (!isDragging || !updateBloomSliderValue.lastSave || now - updateBloomSliderValue.lastSave > 50) {
+        localStorage.setItem('bloomIntensity', clampedValue.toString());
+        updateBloomSliderValue.lastSave = now;
+        if (presetSelect) {
+            presetSelect.value = 'custom';
+            localStorage.setItem('performancePreset', 'custom');
+        }
+    }
+
+    // Apply to video settings (throttle during dragging)
+    if (!isDragging || !updateBloomSliderValue.lastVideoUpdate || now - updateBloomSliderValue.lastVideoUpdate > 16) {
+        const antialiasingEnabled = document.getElementById('toggle-antialiasing')?.checked ?? true;
+        const bloomEnabled = document.getElementById('toggle-bloom')?.checked ?? true;
+        const fogEnabled = document.getElementById('toggle-fog')?.checked ?? true;
+        const snowEnabled = document.getElementById('toggle-snow')?.checked ?? true;
+        const leavesEnabled = document.getElementById('toggle-leaves')?.checked ?? true;
+        applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, clampedValue, snowEnabled, leavesEnabled);
+        updateBloomSliderValue.lastVideoUpdate = now;
+    }
+}
+
+function updateBloomSliderState() {
+    const bloomToggle = document.getElementById('toggle-bloom');
+    const bloomControl = document.querySelector('#tab-video .video-control-item:nth-child(3)');
+
+    if (bloomControl) {
+        if (bloomToggle && !bloomToggle.checked) {
+            bloomControl.classList.add('disabled');
+        } else {
+            bloomControl.classList.remove('disabled');
+        }
+    }
+}
+
+function applyVideoSettings(antialiasingEnabled, bloomEnabled, fogEnabled, bloomIntensity, snowEnabled, leavesEnabled) {
+    // Import scene objects dynamically
+    import('./main.js').then(({ scene, renderer, composer, particleManager }) => {
+        if (!renderer || !composer) {
+            console.warn('Renderer or composer not available');
+            return;
+        }
+
+        // Apply antialiasing (requires renderer recreation, so we'll skip for now)
+        // Note: Changing antialiasing requires recreating the renderer, which is complex
+        // For now, we'll just log it
+        if (antialiasingEnabled !== undefined) {
+            console.log('Antialiasing setting:', antialiasingEnabled ? 'ON' : 'OFF');
+            // TODO: Implement renderer recreation for antialiasing toggle
+        }
+
+        // Apply bloom effect
+        if (bloomEnabled !== undefined) {
+            const bloomPass = composer.passes.find(pass => pass.constructor.name === 'UnrealBloomPass');
+            if (bloomPass) {
+                bloomPass.enabled = bloomEnabled;
+            }
+        }
+
+        // Apply bloom intensity
+        if (bloomIntensity !== undefined) {
+            const bloomPass = composer.passes.find(pass => pass.constructor.name === 'UnrealBloomPass');
+            if (bloomPass) {
+                bloomPass.strength = bloomIntensity;
+            }
+        }
+
+        // Apply fog
+        if (fogEnabled !== undefined && scene) {
+            if (fogEnabled) {
+                // Re-enable fog if it was disabled
+                if (!scene.fog) {
+                    scene.fog = new THREE.FogExp2(0x020205, 0.007);
+                }
+            } else {
+                // Disable fog
+                scene.fog = null;
+            }
+        }
+
+        // Apply snow particles
+        if (snowEnabled !== undefined && particleManager) {
+            particleManager.setSnowEnabled(snowEnabled);
+        }
+
+        // Apply leaves particles
+        if (leavesEnabled !== undefined && particleManager) {
+            particleManager.setLeavesEnabled(leavesEnabled);
+        }
+    }).catch(err => {
+        console.warn('Could not apply video settings:', err);
     });
 }
 
@@ -944,15 +1452,19 @@ export function setupSplashScreen() {
     
     // Dismiss on button click
     if (splashButton) {
-        splashButton.addEventListener('click', (e) => {
+        splashButton.addEventListener('click', async (e) => {
             e.stopPropagation();
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
             dismissSplash();
         });
     }
     
     // Dismiss on any click on the splash screen background
-    splashScreen.addEventListener('click', (e) => {
+    splashScreen.addEventListener('click', async (e) => {
         if (e.target === splashScreen || e.target.closest('.splash-content') === null) {
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
             dismissSplash();
         }
     });
@@ -1032,8 +1544,8 @@ function showUI() {
         btn.style.display = ''; // Clear any inline display: none
         btn.style.visibility = '';
         btn.style.opacity = '';
-        // Restore cursor for play and settings buttons
-        if (btn.id === 'play-btn' || btn.id === 'settings-btn') {
+        // Restore cursor for play, gallery, and settings buttons
+        if (btn.id === 'play-btn' || btn.id === 'gallery-btn' || btn.id === 'settings-btn') {
             btn.style.cursor = 'pointer';
         }
     });
@@ -1068,6 +1580,9 @@ function showUI() {
 export function setupUI() {
     const uiBtn = document.getElementById('ui-toggle');
     const fsBtn = document.getElementById('fullscreen-btn');
+
+    // Setup menu button sound effects
+    setupMenuButtonSounds();
 
     // Toggle UI Visibility
     uiBtn.addEventListener('click', () => {
@@ -1127,8 +1642,28 @@ export function setupUI() {
     // But we can set up the event handlers now
     setupTechInfoPanel();
     setupWorldGenPanel();
+    setupGalleryPanel();
     setupSettingsPanel();
     setupNewsReelSnowflakes();
     // Countdown timer will be started when splash screen is dismissed
     // setupCountdownTimer(); // Moved to splash dismissal
+}
+
+// Setup sound effects for menu buttons
+function setupMenuButtonSounds() {
+    const menuButtons = document.querySelectorAll('.menu-btn');
+    
+    menuButtons.forEach(button => {
+        // Hover sound
+        button.addEventListener('mouseenter', async () => {
+            const { playHoverSound } = await getUISoundsModule();
+            playHoverSound();
+        });
+        
+        // Click sound
+        button.addEventListener('click', async (e) => {
+            const { playClickSound } = await getUISoundsModule();
+            playClickSound();
+        });
+    });
 }

@@ -6,9 +6,12 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
 ## Key Features
 - **Dual World System**: Separate menu world and game world that coexist independently
 - **Procedural Terrain**: Instanced mesh rendering for performance
+- **Block Borders**: All voxel blocks have visible edge lines (Minecraft-style borders) for authentic appearance
+- **Block Registry**: Comprehensive block tracking system for future destructibility functionality
 - **First-Person Mode**: Full first-person camera with mouse look controls and WASD movement
 - **WASD Movement**: Smooth first-person movement with configurable keybinds, ground collision, and jump mechanics
 - **Configurable Keybinds**: Fully customizable keybinds with interactive UI, localStorage persistence, and visual feedback
+- **Video Settings**: Graphics options including antialiasing, bloom effect, and fog toggles with intensity controls
 - **Ambient Sound**: Procedural wind ambient sound using Tone.js (starts automatically in first-person mode)
 - **Particle Systems**: Snow and falling leaves
 - **Post-Processing**: Bloom effect for a magical look
@@ -16,11 +19,20 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
 - **Interactive UI**: 
   - Tech info panel displaying rendering technologies
   - World generation panel with progress tracking
+  - Gallery panel with tabbed interface for Entities, Blocks, Structures, and Plants
   - Animated RGB LED news reel
   - Enhanced Play button with glowy snowy effects
+  - Gallery button with Christmas artsy styling
 
 ## UI Components
 - **Tech Info Panel**: Toggleable panel (⚙️ Tech button) showing WebGPU/WebGL status, Three.js version, Post-Processing, Instanced Rendering, Particle Systems, and OrbitControls.
+- **Gallery Panel**: Accessible via Gallery button, displays organized view of all game assets:
+  - **Entities Tab**: Christmas Light, Tree Light
+  - **Blocks Tab**: Snow, Dirt, Wood, Leaves, Stone, Plank, Window blocks
+  - **Structures Tab**: House structure
+  - **Plants Tab**: Christmas Tree
+  - Sleek card-based grid layout with hover animations
+  - Tabbed interface matching Settings panel design
 - **World Generation Panel**: Accessible via Play button, displays world size (64x64) and toggle switches for trees, lights, house, and hills.
 - **World Loading Screen**: Full-screen loading overlay (z-index: 9999) with fully opaque background that completely blocks menu and game world view. Features:
   - Animated progress bar with shimmer effect and real-time percentage display (0-100%)
@@ -37,6 +49,8 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - **Dynamic Snowflakes**: JavaScript-generated snowflakes spawning at random positions, falling with rotation (6-8s duration, max 7 active)
   - **Scrolling Text**: Continuous horizontal scroll of latest updates
 - **Play Button**: Glowy snowy appearance with animated snowflakes and pulsing glow.
+- **Gallery Button**: Christmas artsy button with warm pink/red gradient, picture frame and sparkle decorations, and pulsing glow animation. Opens gallery panel.
+- **Settings Button**: Glowy snowy appearance matching Play button style. Opens settings panel.
 - **Quit Button**: Red-tinted quit button (✕ Quit) in bottom-right corner that closes the application. Uses WebView2 message communication between JavaScript and C# wrapper.
 - **UI Auto-Hide System**:
   - **Countdown Timer**: 5-second countdown after splash screen automatically hides UI for immersive viewing
@@ -60,6 +74,9 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - Ambient wind sound automatically starts when entering first-person mode
   - Ambient sound respects master audio toggle and volume settings
   - Smooth volume transitions and proper audio context handling
+  - UI sound effects for button hover and click interactions
+  - Hover sounds (900 Hz, 0.1s) and click sounds (500 Hz, 0.15s) using Tone.js
+  - UI sounds respect master audio toggle and provide audio feedback for all interactions
 
 ## Distribution
 
@@ -82,4 +99,4 @@ See [PACKAGING.md](../PACKAGING.md) for detailed instructions.
 
 ## Status
 - **Current Version**: 0.0.1 ALPHA
-- **Last Update**: WASD movement system with configurable keybinds, ground collision, and jump mechanics. Interactive keybind UI in Settings → Controls with click-to-change functionality and visual feedback. Full-screen world loading screen with animated progress bar, real-time status updates, and automatic UI blocking. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable volume sliders with percentage display. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.
+- **Last Update**: Block borders system with visible edge lines on all voxel blocks (Minecraft-style). Block registry system for tracking all blocks in the world (prepared for future destructibility). Video settings panel with antialiasing, bloom effect, and fog toggles plus bloom intensity slider. Edge line rendering optimized to prevent z-fighting and flickering. Menu world snow edges disabled to prevent visual artifacts. Gallery system added with tabbed interface for viewing Entities, Blocks, Structures, and Plants. WASD movement system with configurable keybinds, ground collision, and jump mechanics. Interactive keybind UI in Settings → Controls with click-to-change functionality. Full-screen world loading screen with animated progress bar and real-time status updates. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable sliders and real-time settings application. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.

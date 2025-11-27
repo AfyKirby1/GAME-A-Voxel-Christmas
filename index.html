@@ -113,6 +113,7 @@
 
         <div class="menu-container">
             <button class="menu-btn" id="play-btn">Play</button>
+            <button class="menu-btn" id="gallery-btn">Gallery</button>
             <button class="menu-btn" id="settings-btn">Settings</button>
             <button class="menu-btn">About</button>
         </div>
@@ -161,6 +162,100 @@
                     </div>
                 </div>
                 <button id="generate-world-btn" class="generate-world-btn">Generate World</button>
+            </div>
+        </div>
+
+        <!-- Gallery Panel -->
+        <div id="gallery-panel" class="gallery-panel-hidden">
+            <div class="gallery-header">
+                <h2>🖼️ Gallery</h2>
+                <button id="close-gallery" class="close-btn">×</button>
+            </div>
+            <div class="gallery-tabs">
+                <button class="gallery-tab active" data-tab="entities">Entities</button>
+                <button class="gallery-tab" data-tab="blocks">Blocks</button>
+                <button class="gallery-tab" data-tab="structures">Structures</button>
+                <button class="gallery-tab" data-tab="plants">Plants</button>
+            </div>
+            <div class="gallery-content">
+                <!-- Entities Tab -->
+                <div class="gallery-tab-content active" id="gallery-entities">
+                    <div class="gallery-grid">
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">💡</div>
+                            <div class="gallery-item-name">Christmas Light</div>
+                            <div class="gallery-item-desc">Glowing holiday decoration</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">✨</div>
+                            <div class="gallery-item-name">Tree Light</div>
+                            <div class="gallery-item-desc">Colorful tree decoration</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blocks Tab -->
+                <div class="gallery-tab-content" id="gallery-blocks">
+                    <div class="gallery-grid">
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">❄️</div>
+                            <div class="gallery-item-name">Snow Block</div>
+                            <div class="gallery-item-desc">Pure white snow</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🌍</div>
+                            <div class="gallery-item-name">Dirt Block</div>
+                            <div class="gallery-item-desc">Earth terrain block</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🪵</div>
+                            <div class="gallery-item-name">Wood Block</div>
+                            <div class="gallery-item-desc">Tree trunk material</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🍃</div>
+                            <div class="gallery-item-name">Leaves Block</div>
+                            <div class="gallery-item-desc">Green foliage block</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🪨</div>
+                            <div class="gallery-item-name">Stone Block</div>
+                            <div class="gallery-item-desc">Gray stone material</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🪵</div>
+                            <div class="gallery-item-name">Plank Block</div>
+                            <div class="gallery-item-desc">Processed wood plank</div>
+                        </div>
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🪟</div>
+                            <div class="gallery-item-name">Window Block</div>
+                            <div class="gallery-item-desc">Glowing window pane</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Structures Tab -->
+                <div class="gallery-tab-content" id="gallery-structures">
+                    <div class="gallery-grid">
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🏠</div>
+                            <div class="gallery-item-name">House</div>
+                            <div class="gallery-item-desc">Cozy winter cottage with glowing windows</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plants Tab -->
+                <div class="gallery-tab-content" id="gallery-plants">
+                    <div class="gallery-grid">
+                        <div class="gallery-item">
+                            <div class="gallery-item-icon">🌲</div>
+                            <div class="gallery-item-name">Christmas Tree</div>
+                            <div class="gallery-item-desc">Evergreen tree with lights</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -257,7 +352,89 @@
 
                 <!-- Video Panel -->
                 <div class="settings-tab-content" id="tab-video">
-                    <!-- Video settings will be added here -->
+                    <div class="video-controls">
+                        <!-- Performance Preset -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Performance Preset</span>
+                            </div>
+                            <select id="performance-preset" class="preset-select">
+                                <option value="low">Low</option>
+                                <option value="mid" selected>Mid</option>
+                                <option value="high">High</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <div class="video-control-desc">Quick preset configurations for performance</div>
+                        </div>
+
+                        <!-- Antialiasing Control -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Antialiasing</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-antialiasing" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="video-control-desc">Smooths jagged edges (may impact performance)</div>
+                        </div>
+
+                        <!-- Bloom Effect Control -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Bloom Effect</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-bloom" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="volume-slider-container">
+                                <div class="volume-slider" id="bloom-intensity-slider">
+                                    <div class="volume-slider-track">
+                                        <div class="volume-slider-fill" id="bloom-intensity-fill"></div>
+                                        <div class="volume-slider-handle" id="bloom-intensity-handle"></div>
+                                    </div>
+                                </div>
+                                <span class="volume-percentage" id="bloom-intensity-percentage">70%</span>
+                            </div>
+                        </div>
+
+                        <!-- Fog Control -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Fog</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-fog" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="video-control-desc">Atmospheric distance fog</div>
+                        </div>
+
+                        <!-- Snow Particles Control -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Snow Particles</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-snow" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="video-control-desc">Falling snow particles (performance impact)</div>
+                        </div>
+
+                        <!-- Leaves Particles Control -->
+                        <div class="video-control-item">
+                            <div class="video-control-header">
+                                <span class="video-control-label">Leaves Particles</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-leaves" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="video-control-desc">Falling leaves particles (performance impact)</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

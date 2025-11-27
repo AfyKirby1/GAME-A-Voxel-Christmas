@@ -28,12 +28,19 @@ function init() {
 
     // 2. Generate Menu World (happens in background while splash is visible)
     // Generate menu world directly in scene (not in a container)
-    generateTerrainInstanced(scene, SCENE_OPTS);
+    // Disable snow edges for menu to prevent flickering
+    generateTerrainInstanced(scene, SCENE_OPTS, { enableSnowEdges: false });
     generateHouse(scene);
     generateTrees(scene, SCENE_OPTS);
 
     // 3. Particles
     particleManager = new ParticleManager(scene, SCENE_OPTS);
+    
+    // Apply saved particle settings
+    const snowEnabled = localStorage.getItem('snowEnabled') !== 'false';
+    const leavesEnabled = localStorage.getItem('leavesEnabled') !== 'false';
+    particleManager.setSnowEnabled(snowEnabled);
+    particleManager.setLeavesEnabled(leavesEnabled);
 
     // 4. Start Background Music
     setupBackgroundMusic();
@@ -269,7 +276,7 @@ export function exitFirstPersonMode() {
 }
 
 // Export scene objects for UI access
-export { scene, camera, renderer };
+export { scene, camera, renderer, composer, particleManager };
 
 // Start the app immediately (world generation happens in background)
 // Splash screen stays visible until user clicks, but scene is loading behind it

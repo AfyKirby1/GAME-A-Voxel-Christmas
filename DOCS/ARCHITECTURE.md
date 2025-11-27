@@ -62,6 +62,26 @@ The application can be packaged as a Windows executable using WebView2:
   - **World Clearing**: `clearWorld(container)` function removes all generated objects from specified container
   - **Ground Height Calculation**: `getGroundHeight(x, z, SCENE_OPTS, useGameHeight)` calculates terrain height at position (supports both menu and game world heights)
   - **Dual World Support**: Functions support both menu world (PEAK_HEIGHT) and game world (GAME_PEAK_HEIGHT) height calculations
+  - **Block Borders**: All blocks have visible edge lines using `THREE.EdgesGeometry` and `THREE.LineSegments`
+  - **Edge Line Rendering**: 
+    - Individual blocks use `LineSegments` with shared `edgeGeometry` and `edgeMaterial`
+    - Instanced terrain uses `InstancedMesh` for edge lines (same instance matrices as regular meshes)
+    - Edge material uses `polygonOffset` to prevent z-fighting
+    - Edge lines have `renderOrder = 1` to render after blocks
+  - **Block Registration**: All blocks automatically registered in block registry when created
+  - **Menu World Optimization**: Snow block edges disabled on menu world (`enableSnowEdges: false`) to prevent flickering
+- **`js/block-registry.js`**: Block tracking system for future destructibility functionality.
+  - **Block Data Structure**: Stores position (x, y, z), type (dirt, snow, wood, leaves, stone, plank, window), mesh reference, instanced flag, instance index, and container
+  - **Fast Lookups**: Uses Map with string keys (`"x,y,z"`) for O(1) position-based lookups
+  - **Functions**:
+    - `registerBlock(x, y, z, type, mesh, isInstanced, instanceIndex, container)`: Register a block
+    - `getBlock(x, y, z)`: Get block data at position (returns null if not found)
+    - `removeBlock(x, y, z)`: Remove block from registry (returns true if found)
+    - `clearRegistry()`: Clear all registered blocks
+    - `getAllBlocks()`: Get array of all block data objects
+    - `getBlockCount()`: Get total number of registered blocks
+  - **Integration**: Automatically called by `createVoxel()` and `generateTerrainInstanced()` to track all blocks
+  - **Cleanup**: Registry cleared when `clearWorld()` is called
 - **`js/first-person-controls.js`**: First-person camera controller using PointerLockControls with WASD movement.
   - Wraps Three.js PointerLockControls for mouse look
   - Handles pointer lock/unlock events
@@ -116,6 +136,11 @@ The application can be packaged as a Windows executable using WebView2:
     - Stops automatically when exiting first-person mode
     - Volume updates in real-time when master audio settings change
 - **`js/ui.js`**: Handles DOM event listeners and UI controls.
+  - **Gallery Panel System** (`setupGalleryPanel()`): Manages gallery panel visibility and tab navigation
+    - Opens gallery panel when Gallery button is clicked
+    - Pauses countdown timer when panel is open
+    - Tab navigation system for switching between categories
+    - Gallery panel styled to match Settings panel design pattern
   - **News Reel Snowflakes**: Dynamic JavaScript system that spawns snowflakes at random positions with falling animations.
   - **UI State Management**: Shared module-level state (`uiVisible`) and functions (`hideUI()`, `showUI()`) for unified UI visibility control.
   - **Countdown Timer**: 5-second countdown after splash dismissal that auto-hides UI, removing all buttons from layout and disabling interactions.
@@ -140,6 +165,13 @@ The application can be packaged as a Windows executable using WebView2:
     - Error handling with loading screen cleanup and UI restoration
   - **Settings Panel Observer**: Listens to `#settings-btn` clicks to show settings panel.
   - **Close Settings Observer**: Listens to `#close-settings` clicks to hide settings panel.
+  - **Gallery Panel Observer** (`setupGalleryPanel()`): Listens to `#gallery-btn` clicks to show gallery panel.
+    - Disables countdown timer when opened
+    - Shows gallery panel with tabbed interface
+  - **Close Gallery Observer**: Listens to `#close-gallery` clicks to hide gallery panel.
+  - **Gallery Tab Navigation** (`setupGalleryTabs()`): Handles tab switching in gallery panel
+    - Switches between Entities, Blocks, Structures, and Plants tabs
+    - Updates active tab and corresponding content with fade animations
   - **Controls Panel Setup** (`setupControlsPanel()`): Interactive keybind configuration system
     - Loads keybinds from localStorage on initialization
     - Makes each `.keybind-key` element clickable
@@ -149,6 +181,15 @@ The application can be packaged as a Windows executable using WebView2:
     - Updates keybind in localStorage and UI display
     - Keybinds automatically reload on next key press (no restart needed)
     - Supports Escape key to cancel keybind change
+  - **Video Panel Setup** (`setupVideoPanel()`): Graphics settings configuration system
+    - Antialiasing toggle (on/off) - smooths jagged edges
+    - Bloom Effect toggle (on/off) with intensity slider (0-100%)
+    - Fog toggle (on/off) - atmospheric distance fog
+    - All settings persist to localStorage
+    - Real-time application of video settings via `applyVideoSettings()`
+    - Bloom intensity slider with draggable handle and percentage display
+    - Disabled state styling when toggles are off
+    - Settings applied to renderer, composer, and scene objects
   - **Game UI Button Hiding**: `hideGameUIButtons()` function hides tech, quit, fullscreen, and show UI buttons when entering first-person mode.
 
 ## Event Observers & Connections
