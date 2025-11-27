@@ -7,6 +7,15 @@ async function getAmbientSoundModule() {
     return ambientSoundModule;
 }
 
+// Import keybind functions
+let keybindModule = null;
+async function getKeybindModule() {
+    if (!keybindModule) {
+        keybindModule = await import('./config.js');
+    }
+    return keybindModule;
+}
+
 export function setupTechInfoPanel() {
     const toggleBtn = document.getElementById('tech-toggle-btn');
     const panel = document.getElementById('tech-info-panel');
@@ -83,6 +92,9 @@ export function setupSettingsPanel() {
 
     // Setup Audio Panel (after tabs so elements exist)
     setupAudioPanel();
+    
+    // Setup Controls Panel (after tabs so elements exist)
+    setupControlsPanel();
 }
 
 function setupSettingsTabs() {
@@ -331,6 +343,123 @@ function updateSliderValue(type, value, isDragging = false) {
         );
         sliderThrottle.lastAudioUpdate[type] = now;
     }
+}
+
+function setupControlsPanel() {
+    const keybindItems = document.querySelectorAll('.keybind-item');
+    let listeningElement = null;
+    let listeningKeybind = null;
+    
+    // Load and display current keybinds
+    async function updateKeybindDisplay() {
+        const { loadKeybinds, getKeyDisplayName } = await getKeybindModule();
+        const keybinds = loadKeybinds();
+        
+        keybindItems.forEach(item => {
+            const keybindAction = item.getAttribute('data-keybind');
+            if (keybindAction && keybinds[keybindAction]) {
+                const keyElement = item.querySelector('.keybind-key');
+                if (keyElement) {
+                    const keyCode = keybinds[keybindAction];
+                    keyElement.textContent = getKeyDisplayName(keyCode);
+                    keyElement.setAttribute('data-keycode', keyCode);
+                }
+            }
+        });
+    }
+    
+    // Initialize display
+    updateKeybindDisplay();
+    
+    // Handle keybind change
+    async function startListeningForKey(element, keybindAction) {
+        // Remove listening state from any previous element
+        if (listeningElement) {
+            listeningElement.classList.remove('listening');
+        }
+        
+        // Set new listening state
+        listeningElement = element;
+        listeningKeybind = keybindAction;
+        element.classList.add('listening');
+        element.textContent = 'Press a key...';
+        
+        // Create one-time keydown listener
+        const keydownHandler = async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const newKeyCode = event.code;
+            
+            // Don't allow Escape or other special keys
+            if (newKeyCode === 'Escape' || newKeyCode.startsWith('F')) {
+                // Cancel listening
+                element.classList.remove('listening');
+                await updateKeybindDisplay();
+                listeningElement = null;
+                listeningKeybind = null;
+                document.removeEventListener('keydown', keydownHandler);
+                return;
+            }
+            
+            // Check if key is already bound to another action
+            const { loadKeybinds, saveKeybinds, getKeyDisplayName } = await getKeybindModule();
+            const currentKeybinds = loadKeybinds();
+            let conflict = false;
+            let conflictAction = null;
+            
+            for (const [action, keyCode] of Object.entries(currentKeybinds)) {
+                if (action !== keybindAction && keyCode === newKeyCode) {
+                    conflict = true;
+                    conflictAction = action;
+                    break;
+                }
+            }
+            
+            if (conflict) {
+                // Show conflict message briefly
+                const originalText = element.textContent;
+                element.textContent = 'Already bound!';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                }, 1000);
+                return;
+            }
+            
+            // Update keybind
+            currentKeybinds[keybindAction] = newKeyCode;
+            saveKeybinds(currentKeybinds);
+            
+            // Update display
+            element.classList.remove('listening');
+            element.textContent = getKeyDisplayName(newKeyCode);
+            element.setAttribute('data-keycode', newKeyCode);
+            
+            // Keybinds will be automatically reloaded on next key press
+            // since the event handlers reload them dynamically
+            
+            // Clean up
+            listeningElement = null;
+            listeningKeybind = null;
+            document.removeEventListener('keydown', keydownHandler);
+        };
+        
+        document.addEventListener('keydown', keydownHandler, { once: false });
+    }
+    
+    // Make each keybind key clickable
+    keybindItems.forEach(item => {
+        const keyElement = item.querySelector('.keybind-key');
+        const keybindAction = item.getAttribute('data-keybind');
+        
+        if (keyElement && keybindAction) {
+            keyElement.style.cursor = 'pointer';
+            keyElement.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await startListeningForKey(keyElement, keybindAction);
+            });
+        }
+    });
 }
 
 function applyAudioSettings(masterEnabled, musicEnabled, masterVolume, musicVolume) {

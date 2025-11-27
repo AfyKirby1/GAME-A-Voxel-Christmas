@@ -1,5 +1,47 @@
 # Scratchpad
 
+## 2025-01-XX: Loading Screen Bug Fixes
+
+### Issues
+1. **Loading Screen Not Hiding Menu**: The loading screen was not properly covering the main menu during world generation. Menu elements were visible behind/around the loading screen.
+2. **Menu Flash After Generation**: After world generation completed, the main menu would briefly appear for ~600ms before entering first-person mode, creating a jarring transition.
+
+### Root Causes
+1. CSS structure issue: Loading screen base styles (position, size, background) were only in the `.world-loading-screen-hidden` class, causing them to be lost when switching to visible state.
+2. Operation order issue: The code was hiding the loading screen *before* entering first-person mode, revealing the menu world during the transition delay.
+
+### Solutions
+1. **CSS Refactor** (`css/style.css`):
+   - Moved base styles (position: fixed, width: 100%, height: 100%, background, etc.) to `#world-loading-screen` ID selector
+   - Visibility classes now only control display, opacity, visibility, and z-index
+   - Ensures loading screen always has proper dimensions and background
+
+2. **UI Element Hiding** (`js/loading-screen.js`):
+   - `showLoadingScreen()` now uses `!important` inline styles to force hide ALL UI elements
+   - Targets: title-screen, menu-container, menu buttons, news-reel, audio-warning, UI buttons, panels, tech panel, countdown timer
+   - Prevents any UI from showing through during generation
+
+3. **Operation Order Fix** (`js/ui.js`):
+   - Reordered operations: `enterFirstPersonMode()` now called *before* `hideLoadingScreen()`
+   - Removed the 600ms delay that was causing the menu flash
+   - Result: Game world is activated behind the loading screen, then loading screen fades out revealing game
+
+4. **Smooth Fade-Out** (`js/loading-screen.js`):
+   - `hideLoadingScreen()` now maintains `display: flex` during transition
+   - Allows CSS opacity transition to work properly (0.5s fade)
+   - Sets `display: none` after transition completes for complete removal
+
+### Files Modified
+- `css/style.css` - Refactored loading screen CSS structure
+- `js/loading-screen.js` - Enhanced UI hiding with !important styles, restored fade-out transition
+- `js/ui.js` - Fixed operation order (enter first-person mode before hiding loading screen)
+
+### Result
+- Loading screen now completely covers menu during generation
+- Seamless transition from loading directly to gameplay
+- No menu flash or visible menu world during transition
+- Smooth fade-out animation when entering game
+
 ## 2025-01-XX: Volume Slider Bug Fix
 
 ### Issue
@@ -61,3 +103,71 @@
 - **Snowflake Animation**: Pixel-based `translateY` values (0px to 48px) for precise control
 - **Opacity Curve**: High visibility (0.8) maintained until 85% of animation, then gradual fade
 - **Rotation**: Continuous 540-degree rotation during fall for natural movement
+
+## 2025-01-XX: WASD Movement and Keybind System
+
+### Implementation
+1. **Keybind Configuration System** (`js/config.js`):
+   - Default keybind mappings (W, A, S, D, Space)
+   - `loadKeybinds()`: Loads from localStorage or returns defaults
+   - `saveKeybinds()`: Saves to localStorage
+   - `getKeyDisplayName()`: Converts key codes to display names
+   - Key display name mapping for common keys (W, A, S, D, Space, Arrow keys, modifiers)
+
+2. **Movement System** (`js/first-person-controls.js`):
+   - Movement state tracking (keys currently pressed)
+   - Movement constants: speed (5.0), jump speed (8.0), gravity (20.0), eye height (1.6)
+   - `updateMovement(deltaTime)`: Calculates movement direction based on camera rotation
+   - Ground collision using `getGroundHeight()` callback
+   - Keyboard event listeners (keydown/keyup) that reload keybinds dynamically
+   - Movement respects camera rotation (forward = camera direction)
+   - Horizontal movement normalized to prevent faster diagonal movement
+   - Vertical movement with gravity and jump mechanics
+
+3. **Movement Integration** (`js/main.js`):
+   - DeltaTime calculation in animation loop (capped at 100ms)
+   - `updateMovement(deltaTime)` called in first-person mode
+   - Ground collision callback passed to FirstPersonControls constructor
+   - Keybinds reloaded when entering first-person mode
+
+4. **Interactive Keybind UI** (`js/ui.js`):
+   - `setupControlsPanel()`: Initializes keybind UI
+   - Loads and displays current keybinds from localStorage
+   - Click-to-change functionality on `.keybind-key` elements
+   - "Listening" state with visual feedback (CSS class)
+   - One-time keydown listener for keybind capture
+   - Duplicate keybind prevention with conflict message
+   - Automatic UI update and localStorage save
+   - Escape key to cancel keybind change
+
+5. **Visual Feedback** (`css/style.css`):
+   - `.keybind-key.listening` class with pulsing animation
+   - Orange glow effect (color: #ffaa00) with box-shadow
+   - `@keyframes keybindPulse`: 1.5s infinite animation
+   - Scale transform (1.05) for emphasis
+   - Smooth transitions for state changes
+   - Hover effects work with listening state
+
+6. **HTML Structure** (`index.html`):
+   - Added `data-keybind` attributes to keybind items
+   - Identifies movement actions (forward, backward, left, right, jump)
+
+### Features
+- ✅ WASD movement with configurable keybinds
+- ✅ Ground collision detection
+- ✅ Jump mechanics with gravity
+- ✅ Frame-independent movement (deltaTime)
+- ✅ Interactive keybind UI with visual feedback
+- ✅ localStorage persistence
+- ✅ Dynamic keybind reloading (no restart needed)
+- ✅ Duplicate keybind prevention
+- ✅ Key display name mapping for UI
+
+### Technical Details
+- Movement speed: 5.0 units/second
+- Jump speed: 8.0 units/second (initial velocity)
+- Gravity: 20.0 units/s²
+- Player eye height: 1.6 units above ground
+- DeltaTime capped at 100ms to prevent large jumps on frame drops
+- Keybinds reloaded on each key press for immediate effect
+- Movement only active when pointer is locked (first-person mode)

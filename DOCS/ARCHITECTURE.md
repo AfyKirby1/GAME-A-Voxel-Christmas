@@ -42,6 +42,13 @@ The application can be packaged as a Windows executable using WebView2:
   - Tree count: 400
   - Snow particles: 6000
   - All dimensions scaled proportionally
+- **Keybind Configuration**:
+  - `DEFAULT_KEYBINDS`: Default key mappings (forward: 'KeyW', backward: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space')
+  - `loadKeybinds()`: Loads keybinds from localStorage or returns defaults
+  - `saveKeybinds(keybinds)`: Saves keybinds to localStorage
+  - `getKeyDisplayName(keyCode)`: Converts key codes to display names (e.g., 'KeyW' → 'W')
+  - `getKeybind(action)`: Gets keybind for a specific action
+  - Keybinds stored in localStorage with automatic fallback to defaults
 - Allows easy tuning of procedural generation parameters (radius, counts, colors).
 
 ### 4. Modules
@@ -55,10 +62,22 @@ The application can be packaged as a Windows executable using WebView2:
   - **World Clearing**: `clearWorld(container)` function removes all generated objects from specified container
   - **Ground Height Calculation**: `getGroundHeight(x, z, SCENE_OPTS, useGameHeight)` calculates terrain height at position (supports both menu and game world heights)
   - **Dual World Support**: Functions support both menu world (PEAK_HEIGHT) and game world (GAME_PEAK_HEIGHT) height calculations
-- **`js/first-person-controls.js`**: First-person camera controller using PointerLockControls.
+- **`js/first-person-controls.js`**: First-person camera controller using PointerLockControls with WASD movement.
   - Wraps Three.js PointerLockControls for mouse look
   - Handles pointer lock/unlock events
   - Manages camera rotation with pitch limits
+  - **Movement System**: 
+    - WASD movement controls with configurable keybinds
+    - Movement respects camera rotation (forward = camera direction)
+    - Ground collision detection using `getGroundHeight()` callback
+    - Jump mechanics with gravity (20.0 units/s²) and jump speed (8.0 units/s)
+    - Movement speed: 5.0 units/second
+    - Player eye height: 1.6 units above ground
+    - Frame-independent movement using deltaTime
+    - Keyboard event listeners that dynamically reload keybinds on each key press
+    - Movement state tracking (keys currently pressed)
+    - `updateMovement(deltaTime)`: Updates camera position based on key states and ground collision
+    - `reloadKeybinds()`: Reloads keybinds from localStorage (called when keybinds change)
 - **`js/loading-screen.js`**: Loading screen module for world generation progress display.
   - `showLoadingScreen()`: Displays full-screen loading overlay with fade-in animation
     - Automatically hides ALL UI elements (title screen, menu, buttons, news reel, panels)
@@ -121,6 +140,15 @@ The application can be packaged as a Windows executable using WebView2:
     - Error handling with loading screen cleanup and UI restoration
   - **Settings Panel Observer**: Listens to `#settings-btn` clicks to show settings panel.
   - **Close Settings Observer**: Listens to `#close-settings` clicks to hide settings panel.
+  - **Controls Panel Setup** (`setupControlsPanel()`): Interactive keybind configuration system
+    - Loads keybinds from localStorage on initialization
+    - Makes each `.keybind-key` element clickable
+    - When clicked, enters "listening" state (visual feedback with pulsing orange glow)
+    - Listens for next keydown event to set new keybind
+    - Prevents duplicate keybinds (shows "Already bound!" message)
+    - Updates keybind in localStorage and UI display
+    - Keybinds automatically reload on next key press (no restart needed)
+    - Supports Escape key to cancel keybind change
   - **Game UI Button Hiding**: `hideGameUIButtons()` function hides tech, quit, fullscreen, and show UI buttons when entering first-person mode.
 
 ## Event Observers & Connections
@@ -271,10 +299,11 @@ The application can be packaged as a Windows executable using WebView2:
    - Animation loop calls `particleManager.update()` every frame
    - **Connection**: Continuous update cycle for particle systems
 
-3. **Main Loop → Controls** (`js/main.js:71-79`)
+3. **Main Loop → Controls** (`js/main.js:86-103`)
    - Animation loop calls `orbitControls.update()` in menu mode
-   - First-person mode uses PointerLockControls (no update needed)
-   - **Connection**: Continuous camera control updates based on active mode
+   - First-person mode: Calls `firstPersonControls.updateMovement(deltaTime)` for WASD movement
+   - DeltaTime calculation for frame-independent movement (capped at 100ms to prevent large jumps)
+   - **Connection**: Continuous camera control updates based on active mode, movement updates in first-person mode
 
 4. **Main Loop → Composer** (`js/main.js:50`)
    - Animation loop calls `composer.render()` every frame
@@ -331,21 +360,22 @@ The UI system uses a unified state management approach for consistent behavior a
    - User clicks "Generate World" button
    - World generation panel hides immediately
    - **Full-screen loading screen appears** (z-index: 9999, fully opaque)
-   - Loading screen automatically hides ALL UI elements:
-     - Title screen and menu
+   - Loading screen automatically hides ALL UI elements using `!important` styles:
+     - Title screen and menu (display: none !important)
      - World generation panel
      - All UI buttons (Hide UI, Fullscreen, Tech, Quit)
      - News reel and audio warning
      - Countdown timer
    - World regenerated with real-time progress updates on loading screen
    - Loading screen shows progress bar (0-100%) and status messages
-   - After completion, loading screen shows "Entering world..." message
-   - Loading screen hides after brief delay
-   - Switches to first-person camera mode
+   - After completion, loading screen shows "Entering world..." message (800ms display)
+   - **Switches to first-person camera mode** (while loading screen still visible)
    - Main menu background music stops and resets
    - Ambient wind sound starts automatically (if master audio enabled)
    - Pointer lock activated for mouse look
+   - Loading screen fades out smoothly (0.5s transition) revealing the game world
    - Immersive game experience with ambient wind sounds, no UI distractions, and no menu music
+   - **Key Fix**: First-person mode is activated *before* hiding the loading screen to prevent the menu world from briefly appearing during transition
 
 ### Element Restoration
 When `showUI()` is called, it ensures complete restoration:

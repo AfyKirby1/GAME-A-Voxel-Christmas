@@ -6,7 +6,9 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
 ## Key Features
 - **Dual World System**: Separate menu world and game world that coexist independently
 - **Procedural Terrain**: Instanced mesh rendering for performance
-- **First-Person Mode**: Full first-person camera with mouse look controls
+- **First-Person Mode**: Full first-person camera with mouse look controls and WASD movement
+- **WASD Movement**: Smooth first-person movement with configurable keybinds, ground collision, and jump mechanics
+- **Configurable Keybinds**: Fully customizable keybinds with interactive UI, localStorage persistence, and visual feedback
 - **Ambient Sound**: Procedural wind ambient sound using Tone.js (starts automatically in first-person mode)
 - **Particle Systems**: Snow and falling leaves
 - **Post-Processing**: Bloom effect for a magical look
@@ -42,6 +44,15 @@ A procedural Voxel Christmas scene rendered with Three.js (WebGL) featuring an i
   - **Double-Click Wake**: Double-click anywhere on canvas to restore UI after auto-hide
   - **Interaction Blocking**: When hidden, all menu buttons are disabled with no hover effects or click interactions
   - **Complete Restoration**: UI wake properly restores all elements including news reel and audio warning positioning
+- **Controls & Keybinds**:
+  - **WASD Movement**: Smooth first-person movement (W/A/S/D for forward/left/backward/right)
+  - **Jump**: Space bar for jumping with gravity physics
+  - **Mouse Look**: Mouse movement for camera rotation (PointerLockControls)
+  - **Configurable Keybinds**: Settings → Controls tab with click-to-change keybind functionality
+  - **Visual Feedback**: Pulsing orange glow effect when changing keybinds
+  - **Keybind Persistence**: All keybinds saved to localStorage automatically
+  - **No Restart Required**: Keybinds reload dynamically on next key press
+  - **Conflict Prevention**: Prevents assigning the same key to multiple actions
 - **Audio Management**:
   - Background music plays during main menu
   - Music automatically stops when entering first-person game mode
@@ -71,4 +82,4 @@ See [PACKAGING.md](../PACKAGING.md) for detailed instructions.
 
 ## Status
 - **Current Version**: 0.0.1 ALPHA
-- **Last Update**: Full-screen world loading screen with animated progress bar, real-time status updates, and automatic UI blocking. Progress tracking integrated with world generation callback system. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable volume sliders with percentage display. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.
+- **Last Update**: WASD movement system with configurable keybinds, ground collision, and jump mechanics. Interactive keybind UI in Settings → Controls with click-to-change functionality and visual feedback. Full-screen world loading screen with animated progress bar, real-time status updates, and automatic UI blocking. Settings panel with tabbed interface (Audio, Controls, Video) featuring draggable volume sliders with percentage display. Dual world system with separate menu and game worlds. First-person camera mode with mouse look controls.

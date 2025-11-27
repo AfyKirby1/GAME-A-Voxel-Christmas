@@ -11,6 +11,7 @@ let particleManager;
 let isFirstPersonMode = false;
 let gameWorldContainer = null; // Separate container for game world
 let menuWorldObjects = []; // Track menu world objects to keep them separate
+let lastTime = performance.now(); // For deltaTime calculation
 
 function init() {
     // 1. Setup Scene
@@ -86,10 +87,16 @@ function setupBackgroundMusic() {
 function animate() {
     requestAnimationFrame(animate);
     
+    // Calculate deltaTime for frame-independent movement
+    const currentTime = performance.now();
+    const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1); // Cap at 100ms to prevent large jumps
+    lastTime = currentTime;
+    
     // Update appropriate controls based on mode
     if (isFirstPersonMode && firstPersonControls) {
+        // Update movement (WASD controls)
+        firstPersonControls.updateMovement(deltaTime);
         // PointerLockControls handles mouse movement automatically via event listeners
-        // No update() call needed
     } else if (orbitControls) {
         orbitControls.update();
     }
@@ -209,7 +216,15 @@ export function enterFirstPersonMode(spawnY) {
     
     // Create first-person controls if they don't exist
     if (!firstPersonControls) {
-        firstPersonControls = new FirstPersonControls(camera, renderer.domElement);
+        firstPersonControls = new FirstPersonControls(
+            camera, 
+            renderer.domElement,
+            getGroundHeight, // Ground collision callback
+            GAME_WORLD_OPTS  // Scene options for ground height calculation
+        );
+    } else {
+        // Reload keybinds in case they were changed
+        firstPersonControls.reloadKeybinds();
     }
     
     // Position camera at spawn location (ground level + eye height)

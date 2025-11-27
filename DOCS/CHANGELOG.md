@@ -3,6 +3,24 @@
 ## [Unreleased]
 
 ### Added
+- **WASD Movement System**:
+  - Full first-person movement controls (W/A/S/D for forward/left/backward/right)
+  - Movement respects camera rotation (forward = camera direction)
+  - Ground collision detection using `getGroundHeight()` from world generation
+  - Jump mechanics with gravity and physics
+  - Frame-independent movement using deltaTime for smooth gameplay
+  - Movement speed: 5.0 units/second, jump speed: 8.0 units/second
+  - Player eye height: 1.6 units above ground
+  - Movement only active when pointer is locked (first-person mode)
+- **Configurable Keybind System**:
+  - Fully customizable keybinds stored in localStorage
+  - Default keybinds: W (forward), S (backward), A (left), D (right), Space (jump)
+  - Interactive keybind UI in Settings → Controls tab
+  - Click any keybind to change it (visual feedback with pulsing orange glow)
+  - Prevents duplicate keybinds (shows "Already bound!" message)
+  - Keybinds automatically reload on next key press (no restart needed)
+  - Key display names (e.g., "KeyW" → "W", "Space" → "Space")
+  - Supports all standard keys including arrow keys, modifiers, and special keys
 - **Ambient Wind Sound System**:
   - Procedural wind ambient sound using Tone.js
   - Realistic wind generation with PinkNoise, low-pass filter, and LFO modulation
@@ -145,6 +163,9 @@
   - Auto-rotate disabled during first-person gameplay
 
 ### Fixed
+- **Loading Screen Overlay Bug**: Fixed critical issue where the loading screen was not properly hiding the main menu during world generation. The loading screen now completely covers the entire screen with a fully opaque background (z-index: 9999) and uses `!important` styles to ensure all UI elements (title screen, menu, buttons, news reel) are completely hidden during generation.
+- **Loading Screen Transition Glitch**: Fixed issue where the main menu would briefly appear after world generation completed, before entering first-person mode. The flow now correctly enters first-person mode *before* hiding the loading screen, ensuring a seamless transition from loading directly to gameplay without showing the menu world.
+- **Loading Screen CSS Structure**: Refactored loading screen CSS to use base styles on `#world-loading-screen` ID instead of class-only styles, ensuring the loading screen maintains proper positioning, size, and background regardless of visibility state. This prevents the "halved" appearance bug.
 - **Volume Slider Jump Bug**: Fixed issue where grabbing the volume slider handle would cause the white circle (handle) to jump to position 0. The slider now updates position immediately on mousedown instead of waiting for the first mousemove event, preventing incorrect position calculations.
 - **UI Interaction Bug**: Fixed issue where menu buttons (Play, Settings, About) remained clickable and showed hover effects when UI was hidden. Buttons now properly disabled with `pointer-events: none` and CSS `ui-hidden` class.
 - **News Reel Missing**: Fixed bug where news reel would disappear after double-clicking to wake UI. News reel now properly restored with display, opacity, and pointer-events.
